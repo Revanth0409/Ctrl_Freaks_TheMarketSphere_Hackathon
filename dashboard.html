@@ -1,28 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MochaTrade Incident Center – BTC-PERP Flash Crash</title>
+    <meta name="description"
+        content="MochaTrade real-time incident dashboard for the BTC-PERP flash crash. Track status, file a report, and check compensation eligibility.">
+
     <style>
+        /* ─── CSS Variables ───────────────────────────────────────────────────── */
         :root {
-            --bg: #0b0d12;
-            --surface: #12151d;
-            --card: #181c25;
+            --bg: #0d0f14;
+            --surface: #151820;
+            --card: #1b1f2a;
             --border: #272b38;
             --text: #e2e6f0;
-            --muted: #8b92a5;
-            --green: #10b981;
+            --muted: #7a8099;
+            --green: #22c55e;
             --amber: #f59e0b;
             --red: #ef4444;
             --blue: #3b82f6;
-            --purple: #8b5cf6;
+            --purple: #a855f7;
             --font: 'Inter', system-ui, sans-serif;
-            --radius: 12px;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 8px;
         }
 
-        *, *::before, *::after {
+        /* ─── Reset & Base ────────────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
@@ -36,25 +43,25 @@
             font-family: var(--font);
             min-height: 100vh;
             line-height: 1.6;
-            overflow-x: hidden;
         }
 
-        a { color: var(--blue); text-decoration: none; transition: color 0.2s; }
-        a:hover { color: #60a5fa; }
-        button, input, select, textarea { font-family: inherit; }
+        a { color: var(--blue); }
+        button { cursor: pointer; font-family: inherit; }
+        input, select, textarea { font-family: inherit; }
 
+        /* ─── Scrollbar ───────────────────────────────────────────────────────── */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+        /* ─── Layout ──────────────────────────────────────────────────────────── */
         .top-bar {
-            background: rgba(18, 21, 29, 0.85);
-            backdrop-filter: blur(12px);
+            background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
             position: sticky;
             top: 0;
@@ -62,29 +69,24 @@
         }
 
         .sim-banner {
-            background: linear-gradient(90deg, #7c3a00, #92400e);
+            background: #7c3a00;
             color: #fcd34d;
             text-align: center;
-            padding: 8px;
+            padding: 6px;
             font-size: 0.8rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.08em;
         }
 
-        .logo { font-weight: 800; font-size: 1.2rem; color: var(--text); letter-spacing: -0.02em; }
+        .logo { font-weight: 700; font-size: 1.1rem; color: var(--text); white-space: nowrap; }
         .logo span { color: var(--amber); }
 
         .clock {
             font-variant-numeric: tabular-nums;
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1rem;
+            font-weight: 600;
             color: var(--amber);
             min-width: 90px;
-            background: rgba(245, 158, 11, 0.1);
-            padding: 4px 10px;
-            border-radius: 6px;
-            text-align: center;
         }
 
         .spacer { flex: 1; }
@@ -93,22 +95,20 @@
             background: var(--surface);
             border-bottom: 1px solid var(--border);
             display: flex;
-            gap: 8px;
-            padding: 0 16px;
+            gap: 0;
             overflow-x: auto;
         }
 
         .nav-tab {
-            padding: 16px 12px;
+            padding: 12px 20px;
             border: none;
             background: transparent;
             color: var(--muted);
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             font-weight: 500;
             border-bottom: 2px solid transparent;
             white-space: nowrap;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            transition: color .15s, border-color .15s;
         }
 
         .nav-tab:hover { color: var(--text); }
@@ -116,306 +116,294 @@
         .nav-tab.ops-tab { color: var(--purple); }
         .nav-tab.ops-tab.active { border-bottom-color: var(--purple); }
 
-        @keyframes fadeInSlideUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .page { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .page.active { display: block; }
 
-        .page { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
-        .page.active { display: block; animation: fadeInSlideUp 0.4s ease-out forwards; }
-
+        /* ─── Cards & Grid ────────────────────────────────────────────────────── */
         .card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-            transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-
-        .card:hover { border-color: rgba(226, 230, 240, 0.1); transform: translateY(-2px); }
-
-        .card-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--muted);
+            padding: 18px;
             margin-bottom: 16px;
         }
 
-        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            border-radius: 20px;
+        .card-title {
             font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
+            font-weight: 600;
             text-transform: uppercase;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 14px;
         }
 
-        .chip-green  { background: rgba(16, 185, 129, 0.15); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
-        .chip-amber  { background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
-        .chip-red    { background: rgba(239, 68, 68, 0.15);  color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
-        .chip-blue   { background: rgba(59, 130, 246, 0.15); color: var(--blue); border: 1px solid rgba(59, 130, 246, 0.3); }
-        .chip-purple { background: rgba(139, 92, 246, 0.15); color: var(--purple); border: 1px solid rgba(139, 92, 246, 0.3); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 
-        .stat-box { background: rgba(18, 21, 29, 0.5); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: background 0.2s; }
-        .stat-box:hover { background: rgba(18, 21, 29, 0.8); }
-        .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 6px; color: #fff; }
-        .stat-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+        @media (max-width: 700px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .grid-4 { grid-template-columns: 1fr 1fr; }
+        }
 
-        #market-canvas { width: 100%; height: 260px; display: block; border-radius: 8px; background: rgba(0,0,0,0.2); }
+        /* ─── Status Chip ─────────────────────────────────────────────────────── */
+        .chip {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
 
+        .chip-green  { background: rgba(34, 197, 94, .15);  color: var(--green); }
+        .chip-amber  { background: rgba(245, 158, 11, .15); color: var(--amber); }
+        .chip-red    { background: rgba(239, 68, 68, .15);  color: var(--red); }
+        .chip-blue   { background: rgba(59, 130, 246, .15); color: var(--blue); }
+        .chip-purple { background: rgba(168, 85, 247, .15); color: var(--purple); }
+
+        /* ─── Stat boxes ──────────────────────────────────────────────────────── */
+        .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+        .stat-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
+        .stat-value { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+        .stat-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+        /* ─── Chart ───────────────────────────────────────────────────────────── */
+        #market-canvas { width: 100%; height: 220px; display: block; border-radius: 6px; }
+
+        /* ─── Timeline ────────────────────────────────────────────────────────── */
         .phase {
             border-left: 2px solid var(--border);
-            padding-left: 20px;
-            margin-bottom: 24px;
+            padding-left: 16px;
+            margin-bottom: 18px;
             position: relative;
-            transition: all 0.3s;
         }
 
         .phase::before {
             content: '';
             position: absolute;
-            left: -8px;
+            left: -7px;
             top: 4px;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: var(--surface);
-            border: 2px solid var(--border);
-            transition: all 0.3s;
+            background: var(--border);
+            border: 2px solid var(--card);
         }
 
         .phase.active-phase { border-left-color: var(--blue); }
-        .phase.active-phase::before { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+        .phase.active-phase::before { background: var(--blue); }
         .phase.done-phase { border-left-color: var(--green); }
-        .phase.done-phase::before { background: var(--green); border-color: var(--green); }
-        
-        .phase-title { font-weight: 700; font-size: 1rem; color: #fff; }
-        .phase-time { font-size: 0.8rem; color: var(--muted); }
+        .phase.done-phase::before { background: var(--green); }
+        .phase-title { font-weight: 600; font-size: 0.9rem; }
+        .phase-time { font-size: 0.72rem; color: var(--muted); }
 
-        .phase-actions { margin-top: 12px; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-        .phase-actions li { font-size: 0.85rem; color: var(--muted); display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: 6px; }
-        .phase-actions li.done { color: var(--green); background: rgba(16, 185, 129, 0.05); }
-        .phase-actions li .owner { font-size: 0.7rem; background: var(--surface); padding: 2px 8px; border-radius: 4px; white-space: nowrap; color: #fff; border: 1px solid var(--border); }
+        .phase-actions { margin-top: 8px; list-style: none; }
+        .phase-actions li { font-size: 0.8rem; color: var(--muted); padding: 2px 0; display: flex; gap: 8px; align-items: flex-start; }
+        .phase-actions li.done { color: var(--green); }
+        .phase-actions li .owner { font-size: 0.68rem; background: var(--border); padding: 1px 5px; border-radius: 3px; white-space: nowrap; color: var(--muted); flex-shrink: 0; }
 
-        .update-item { border-bottom: 1px solid var(--border); padding: 16px 0; animation: fadeInSlideUp 0.3s ease-out; }
+        /* ─── Updates feed ────────────────────────────────────────────────────── */
+        .update-item { border-bottom: 1px solid var(--border); padding: 12px 0; }
         .update-item:last-child { border-bottom: none; }
-        .update-ts { font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--surface); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; border: 1px solid var(--border); }
-        .update-msg { font-size: 0.95rem; margin-top: 8px; color: var(--text); line-height: 1.6; }
+        .update-ts { font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .update-msg { font-size: 0.875rem; margin-top: 4px; }
 
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-        
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        /* ─── Form ────────────────────────────────────────────────────────────── */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-group.full { grid-column: 1 / -1; }
-        label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+        label { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
 
         input, select, textarea {
-            background: rgba(0,0,0,0.2);
+            background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 6px;
             color: var(--text);
-            padding: 10px 14px;
-            font-size: 0.9rem;
+            padding: 9px 12px;
+            font-size: 0.875rem;
             outline: none;
-            transition: all 0.2s;
+            transition: border-color .15s;
         }
 
-        input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); background: rgba(0,0,0,0.4); }
+        input:focus, select:focus, textarea:focus { border-color: var(--blue); }
         input.err, select.err, textarea.err { border-color: var(--red); }
-        .err-msg { font-size: 0.75rem; color: var(--red); }
-        textarea { resize: vertical; min-height: 100px; }
+        .err-msg { font-size: 0.72rem; color: var(--red); }
+        textarea { resize: vertical; min-height: 80px; }
+        select option { background: var(--card); }
 
-        .btn { 
-            padding: 10px 20px; 
-            border-radius: 8px; 
-            border: none; 
-            font-size: 0.9rem; 
-            font-weight: 600; 
-            transition: all 0.2s ease; 
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn:active { transform: scale(0.96); }
-        .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-        .btn-primary:hover { background: #60a5fa; box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
-        .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-        .btn-ghost:hover { background: var(--surface); border-color: var(--muted); }
-        .btn-amber { background: var(--amber); color: #000; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
-        .btn-amber:hover { background: #fbbf24; box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4); }
-        .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
+        .btn { padding: 10px 20px; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 600; transition: opacity .15s; }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: var(--blue); color: #fff; }
+        .btn-ghost { background: var(--border); color: var(--text); }
+        .btn-amber { background: var(--amber); color: #000; }
+        .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
 
-        .pipeline { display: flex; margin: 20px 0; background: var(--surface); border-radius: 8px; padding: 12px; gap: 4px; }
+        /* ─── Case pipeline ───────────────────────────────────────────────────── */
+        .pipeline { display: flex; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+
         .pipe-step {
             flex: 1;
+            min-width: 80px;
             text-align: center;
-            padding: 8px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            padding: 10px 6px;
+            font-size: 0.75rem;
+            border-top: 3px solid var(--border);
             color: var(--muted);
-            border-radius: 6px;
-            transition: all 0.3s;
         }
-        .pipe-step.done { background: rgba(16, 185, 129, 0.1); color: var(--green); }
-        .pipe-step.active { background: rgba(59, 130, 246, 0.1); color: var(--blue); box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3); }
 
+        .pipe-step.done { border-top-color: var(--green); color: var(--green); }
+        .pipe-step.active { border-top-color: var(--blue); color: var(--blue); }
+
+        /* ─── FAQ ─────────────────────────────────────────────────────────────── */
         .faq-item { border-bottom: 1px solid var(--border); }
+
         .faq-q {
             width: 100%;
             background: none;
             border: none;
             text-align: left;
-            color: #fff;
-            padding: 16px 0;
-            font-size: 0.95rem;
+            color: var(--text);
+            padding: 14px 0;
+            font-size: 0.9rem;
             font-weight: 600;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: pointer;
-            transition: color 0.2s;
         }
-        .faq-q:hover { color: var(--blue); }
-        .faq-q::after { content: '+'; color: var(--muted); font-size: 1.2rem; transition: transform 0.3s; }
-        .faq-q.open::after { transform: rotate(45deg); }
-        .faq-a { font-size: 0.9rem; color: var(--muted); padding: 0 0 16px 0; display: none; line-height: 1.6; }
-        .faq-a.visible { display: block; animation: fadeInSlideUp 0.3s; }
 
-        .team-card { background: rgba(18, 21, 29, 0.5); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; transition: transform 0.2s; }
-        .team-card:hover { transform: translateX(4px); border-color: rgba(139, 92, 246, 0.4); }
-        .team-name { font-weight: 800; font-size: 0.95rem; color: #fff; }
-        .team-role { font-size: 0.8rem; color: var(--purple); margin-bottom: 8px; font-weight: 600; }
-        .team-task { font-size: 0.85rem; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; border-left: 3px solid var(--purple); color: var(--text); }
+        .faq-q::after { content: '+'; color: var(--muted); font-size: 1.1rem; }
+        .faq-q.open::after { content: '-'; }
+        .faq-a { font-size: 0.85rem; color: var(--muted); padding: 0 0 14px 0; display: none; }
+        .faq-a.visible { display: block; }
 
-        .alert-bar { padding: 14px 24px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 12px; animation: fadeInSlideUp 0.4s; }
-        .alert-red   { background: rgba(239, 68, 68, 0.15); border-bottom: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
-        .alert-green { background: rgba(16, 185, 129, 0.15); border-bottom: 1px solid rgba(16, 185, 129, 0.4); color: #86efac; }
-        .alert-amber { background: rgba(245, 158, 11, 0.15); border-bottom: 1px solid rgba(245, 158, 11, 0.4); color: #fcd34d; }
+        /* ─── Ops view ────────────────────────────────────────────────────────── */
+        .team-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+        .team-name { font-weight: 700; font-size: 0.9rem; }
+        .team-role { font-size: 0.72rem; color: var(--muted); margin-bottom: 6px; }
+        .team-task { font-size: 0.82rem; padding: 6px 10px; background: var(--bg); border-radius: 4px; border-left: 3px solid var(--blue); }
 
+        /* ─── Alert banner ────────────────────────────────────────────────────── */
+        .alert-bar { padding: 12px 20px; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .alert-red   { background: rgba(239, 68, 68, .12); border-bottom: 1px solid rgba(239, 68, 68, .3); color: #fca5a5; }
+        .alert-green { background: rgba(34, 197, 94, .12); border-bottom: 1px solid rgba(34, 197, 94, .3); color: #86efac; }
+        .alert-amber { background: rgba(245, 158, 11, .12); border-bottom: 1px solid rgba(245, 158, 11, .3); color: #fcd34d; }
+
+        /* ─── Misc ────────────────────────────────────────────────────────────── */
         .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-        .mono { font-variant-numeric: tabular-nums; font-family: 'SFMono-Regular', Consolas, monospace; }
+        .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+        .mono { font-variant-numeric: tabular-nums; font-family: 'Courier New', monospace; }
 
         .gap-banner {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-size: 0.85rem;
-            color: #fca5a5;
-            margin-top: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            background: rgba(239, 68, 68, .1);
+            border: 1px solid rgba(239, 68, 68, .3);
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            color: var(--red);
+            margin-top: 8px;
         }
 
-        #case-result { margin-top: 24px; }
+        #case-result { margin-top: 16px; }
 
-        .comp-box { background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 20px; margin-top: 16px; }
-        .comp-box.deny { background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.3); }
-        .comp-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); }
-        .comp-row:last-child { border: none; font-weight: 700; margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 1rem; }
+        .comp-box { background: rgba(34, 197, 94, .07); border: 1px solid rgba(34, 197, 94, .25); border-radius: var(--radius); padding: 14px; margin-top: 12px; }
+        .comp-box.deny { background: rgba(245, 158, 11, .07); border-color: rgba(245, 158, 11, .3); }
+        .comp-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 3px 0; border-bottom: 1px solid var(--border); }
+        .comp-row:last-child { border: none; font-weight: 700; }
 
         .hidden { display: none !important; }
 
+        /* ─── Tour caption bar (Feature 3) ────────────────────────────────────── */
         #tour-bar {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            background: rgba(18, 21, 29, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(139, 92, 246, 0.3);
-            padding: 16px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 12px 20px;
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 14px;
             z-index: 200;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-            animation: fadeInSlideUp 0.5s;
         }
 
-        #tour-caption { flex: 1; font-size: 0.95rem; line-height: 1.5; max-width: 900px; color: #fff; font-weight: 500; }
-        #tour-step { font-size: 0.8rem; color: var(--purple); white-space: nowrap; font-weight: 700; background: rgba(139, 92, 246, 0.15); padding: 4px 10px; border-radius: 20px; }
-        body.tour-on { padding-bottom: 80px; }
-        
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-            70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-        }
+        #tour-caption { flex: 1; font-size: 0.9rem; line-height: 1.4; max-width: 900px; }
+        #tour-step { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+        body.tour-on { padding-bottom: 70px; }
     </style>
 </head>
 
 <body>
-    <div class="sim-banner">Simulation – Synthetic Data Environment</div>
 
+    <!-- Simulation warning banner -->
+    <div class="sim-banner">SIMULATION -- Not real trading data. All figures are synthetic.</div>
+
+    <!-- Dynamic alert bar (shown when crash starts) -->
     <div id="alert-bar" class="alert-bar alert-red hidden">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>o</span>
         <span id="alert-text">Flash crash detected on BTC-PERP. Investigating.</span>
     </div>
 
+    <!-- Top control bar -->
     <div class="top-bar">
         <div class="logo">Mocha<span>Trade</span> &middot; Incident Center</div>
         <div class="clock" id="clock-display">T+00:00</div>
-        <div id="market-status-chip" class="chip chip-green pulse">NORMAL</div>
+        <div id="market-status-chip" class="chip chip-green">NORMAL</div>
         <div class="spacer"></div>
-        
-        <select id="scenario-select" class="btn-ghost" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);">
-            <option value="fault" selected>Scenario B: System Feed Fault</option>
-            <option value="market">Scenario A: Market-wide Crash</option>
+        <!-- Scenario selector (Feature 1) -->
+        <select id="scenario-select"
+            style="padding:6px 10px;border-radius:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);">
+            <option value="fault" selected>Scenario B: MochaTrade price-feed fault</option>
+            <option value="market">Scenario A: Market-wide crash</option>
         </select>
-        <select id="speed-select" class="btn-ghost" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);">
-            <option value="1">1x Realtime</option>
-            <option value="4">4x Speed</option>
-            <option value="10" selected>10x Speed</option>
-            <option value="20">20x Speed</option>
-            <option value="60">60x Speed</option>
+        <select id="speed-select"
+            style="padding:6px 10px;border-radius:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);">
+            <option value="1">1x speed</option>
+            <option value="4">4x speed</option>
+            <option value="10" selected>10x speed (~6 min)</option>
+            <option value="20">20x speed (~3 min)</option>
+            <option value="60">60x speed (~1 min)</option>
         </select>
-        
+        <!-- Guided Tour button (Feature 3) -->
         <button class="btn btn-ghost btn-sm" id="btn-tour">Guided Tour</button>
-        <button class="btn btn-amber btn-sm" id="btn-start">Start Sim</button>
+        <button class="btn btn-amber btn-sm" id="btn-start">Start Simulation</button>
         <button class="btn btn-ghost btn-sm hidden" id="btn-pause">Pause</button>
         <button class="btn btn-ghost btn-sm hidden" id="btn-reset">Reset</button>
     </div>
 
+    <!-- Navigation tabs -->
     <div class="nav-tabs" role="tablist">
-        <button class="nav-tab active" data-page="page-dashboard" role="tab">Dashboard</button>
-        <button class="nav-tab" data-page="page-timeline" role="tab">Incident Timeline</button>
-        <button class="nav-tab" data-page="page-updates" role="tab">Updates Feed</button>
-        <button class="nav-tab" data-page="page-report" role="tab">Report Issue</button>
-        <button class="nav-tab" data-page="page-track" role="tab">Track Case</button>
-        <button class="nav-tab" data-page="page-help" role="tab">Help Center</button>
-        <button class="nav-tab ops-tab" data-page="page-ops" role="tab">Ops View (Internal)</button>
+        <button class="nav-tab active" data-page="page-dashboard" role="tab" aria-selected="true">Dashboard</button>
+        <button class="nav-tab" data-page="page-timeline" role="tab" aria-selected="false">Incident Timeline</button>
+        <button class="nav-tab" data-page="page-updates" role="tab" aria-selected="false">Updates Feed</button>
+        <button class="nav-tab" data-page="page-report" role="tab" aria-selected="false">Report an Issue</button>
+        <button class="nav-tab" data-page="page-track" role="tab" aria-selected="false">Track My Case</button>
+        <button class="nav-tab" data-page="page-help" role="tab" aria-selected="false">Help Center</button>
+        <button class="nav-tab ops-tab" data-page="page-ops" role="tab" aria-selected="false">Ops View (Internal)</button>
     </div>
 
+    <!-- ═══ PAGE: DASHBOARD ═══ -->
     <div class="page active" id="page-dashboard" role="tabpanel">
-        <div class="grid-4" style="margin:8px 0 24px;">
+        <!-- Live counters -->
+        <div class="grid-4" style="margin:16px 0 16px;">
             <div class="stat-box">
                 <div class="stat-label">Liquidations</div>
                 <div class="stat-value" id="stat-liq-count">0</div>
-                <div class="stat-sub">Positions closed</div>
+                <div class="stat-sub">positions closed</div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">Liquidated Volume</div>
                 <div class="stat-value" id="stat-liq-vol">₹0</div>
-                <div class="stat-sub">Notional INR</div>
+                <div class="stat-sub">notional INR</div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">Insurance Fund</div>
-                <div class="stat-value" id="stat-insurance">₹4.20M</div>
-                <div class="stat-sub" id="stat-insurance-sub">Pre-incident reserve</div>
+                <div class="stat-value" id="stat-insurance">₹399.00M</div>
+                <div class="stat-sub" id="stat-insurance-sub">pre-incident</div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">Open Positions</div>
@@ -424,204 +412,217 @@
             </div>
         </div>
 
+        <!-- Chart -->
         <div class="card">
-            <div class="row" style="margin-bottom:16px;">
-                <div class="card-title" style="margin:0;">BTC-PERP Telemetry</div>
+            <div class="row" style="margin-bottom:10px;">
+                <div class="card-title" style="margin:0;">BTC-PERP Live Chart</div>
                 <div style="flex:1;"></div>
-                <span class="chip chip-blue" style="font-size:0.7rem;">Index Price</span>
-                <span class="chip chip-amber" style="font-size:0.7rem;">Mark Price</span>
+                <span class="chip chip-blue" style="font-size:.65rem;">Index Price</span>
+                <span class="chip chip-amber" style="font-size:.65rem;">Mark Price (dashed)</span>
             </div>
             <canvas id="market-canvas"></canvas>
             <div id="gap-banner" class="gap-banner hidden">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Mark price deviation <strong id="gap-pct">0.0</strong>% from index
+                Mark price deviating <span id="gap-pct">0.0</span>% from index -- Liquidations may be using distorted prices
             </div>
         </div>
 
+        <!-- Cause Verification card (Feature 1c) -->
         <div class="card" id="verdict-card">
-            <div class="card-title">Automated Cause Verification</div>
-            <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;line-height:1.5;">Cross-referencing index telemetry to determine liability and policy application.</div>
-            <div class="row" style="margin-bottom:12px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px;">
-                <span style="font-size:0.9rem;min-width:260px;color:var(--muted);">Market Move (vs baseline)</span>
-                <span id="vd-market-move" class="mono" style="font-size:1rem;font-weight:600;">--</span>
+            <div class="card-title">Cause Verification</div>
+            <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Step 1: verify cause. Step 2: apply the published policy. Step 3: communicate.</div>
+            <div class="row" style="margin-bottom:8px;">
+                <span style="font-size:.82rem;min-width:220px;">Market move (index vs pre-crash)</span>
+                <span id="vd-market-move" style="font-size:.88rem;font-variant-numeric:tabular-nums;">--</span>
             </div>
-            <div class="row" style="margin-bottom:12px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px;">
-                <span style="font-size:0.9rem;min-width:260px;color:var(--muted);">MochaTrade Mark vs Index Gap</span>
-                <span id="vd-gap" class="mono" style="font-size:1rem;font-weight:600;">--</span>
+            <div class="row" style="margin-bottom:8px;">
+                <span style="font-size:.82rem;min-width:220px;">MochaTrade mark vs index gap</span>
+                <span id="vd-gap" style="font-size:.88rem;font-variant-numeric:tabular-nums;">--</span>
             </div>
-            <div class="row" style="padding: 8px 12px;">
-                <span style="font-size:0.9rem;min-width:260px;font-weight:700;">System Verdict</span>
-                <span id="vd-verdict" class="chip chip-amber">Pending Data...</span>
+            <div class="row">
+                <span style="font-size:.82rem;min-width:220px;">Verdict</span>
+                <span id="vd-verdict" class="chip chip-amber">Investigating...</span>
             </div>
         </div>
 
-        <div class="card" style="border-left: 4px solid var(--blue);">
-            <div class="card-title">Current Phase Status</div>
-            <div class="row" style="margin-top: 8px;">
-                <div id="phase-name" style="font-size:1.3rem;font-weight:800;color:#fff;">Monitoring</div>
+        <!-- Current phase summary -->
+        <div class="card">
+            <div class="card-title">Current Incident Phase</div>
+            <div class="row">
+                <div id="phase-name" style="font-size:1.1rem;font-weight:700;">Monitoring</div>
                 <div id="phase-chip" class="chip chip-green">Phase 1</div>
                 <div style="flex:1;"></div>
-                <div id="phase-desc" style="font-size:0.9rem;color:var(--muted);">All systems nominal.</div>
+                <div id="phase-desc" style="font-size:.82rem;color:var(--muted);">All systems nominal.</div>
             </div>
         </div>
 
+        <!-- Quick actions -->
         <div class="grid-2">
             <div class="card">
-                <div class="card-title">Liquidation Review</div>
-                <p style="font-size:0.9rem;color:var(--muted);margin-bottom:20px;">If liquidated during the anomaly window, submit a report for index price cross-referencing. SLAs apply.</p>
-                <button class="btn btn-primary" onclick="goTo('page-report')">File Report</button>
+                <div class="card-title">Were you affected?</div>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">If you were liquidated during the incident, file a report. We cross-check your data against the index feed and respond within 24 hours.</p>
+                <button class="btn btn-primary btn-sm" onclick="goTo('page-report')">File a Report</button>
             </div>
             <div class="card">
-                <div class="card-title">Case Status Lookup</div>
-                <p style="font-size:0.9rem;color:var(--muted);margin-bottom:20px;">Use your case ID or registered email to monitor pipeline position and final compensation verdict.</p>
-                <button class="btn btn-ghost" onclick="goTo('page-track')">Track Case</button>
+                <div class="card-title">Already filed a report?</div>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Use your case ID or email address to check where your case stands in our review pipeline.</p>
+                <button class="btn btn-ghost btn-sm" onclick="goTo('page-track')">Track My Case</button>
             </div>
         </div>
     </div>
 
+    <!-- ═══ PAGE: INCIDENT TIMELINE ═══ -->
     <div class="page" id="page-timeline" role="tabpanel">
         <div class="card">
-            <div class="card-title" style="margin-bottom: 30px;">Incident Response Timeline</div>
+            <div class="card-title">Incident Response Timeline -- BTC-PERP Flash Crash</div>
             <div id="timeline-container"></div>
         </div>
     </div>
 
+    <!-- ═══ PAGE: UPDATES FEED ═══ -->
     <div class="page" id="page-updates" role="tabpanel">
         <div class="card">
-            <div class="row" style="margin-bottom:24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
-                <div class="card-title" style="margin:0;">System Broadcasts</div>
+            <div class="row" style="margin-bottom:14px;">
+                <div class="card-title" style="margin:0;">Status Updates</div>
                 <div style="flex:1;"></div>
-                <div class="chip chip-blue" style="font-size:0.7rem;">5-Min Cadence</div>
+                <div style="font-size:.75rem;color:var(--muted);">Updates are posted every 5 minutes</div>
             </div>
             <div id="updates-feed">
-                <div style="color:var(--muted);font-size:0.9rem;padding:40px 0;text-align:center;">
-                    Feed empty. Start simulation to generate telemetry.
+                <div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center;">
+                    No updates yet. Start the simulation to watch the feed populate.
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- ═══ PAGE: REPORT AN ISSUE ═══ -->
     <div class="page" id="page-report" role="tabpanel">
-        <div class="card" style="max-width:720px; margin: 0 auto;">
-            <div class="card-title" style="font-size:1.1rem; color:#fff;">Submit Liquidation Review</div>
-            <p style="font-size:0.9rem;color:var(--muted);margin-bottom:24px; line-height: 1.6;">
-                Inputs are cross-referenced against immutable index logs. Discrepancies may trigger automatic rejection.
+        <div class="card" style="max-width:680px;">
+            <div class="card-title">Report a Liquidation Issue</div>
+            <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;">
+                Fill out all fields accurately. We cross-reference your liquidation against the index price feed at the time you specify. Submitting false information may result in rejection.
             </p>
 
+            <!-- Success state (hidden initially) -->
             <div id="report-success" class="hidden">
-                <div style="text-align:center;padding:40px 20px; background: rgba(16, 185, 129, 0.05); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                    <div style="font-size:3rem;color:var(--green);margin-bottom:16px;">✓</div>
-                    <div style="font-size:1.4rem;font-weight:800;margin-bottom:8px;color:#fff;">Payload Received</div>
-                    <div style="color:var(--muted);font-size:0.95rem;margin-bottom:16px;">Reference Identifier Generated</div>
-                    <div id="case-id-display" class="mono" style="font-size:2.5rem;font-weight:800;color:var(--blue);letter-spacing:0.1em; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; display: inline-block;"></div>
-                    <div style="margin-top:32px;display:flex;gap:16px;justify-content:center;">
-                        <button class="btn btn-primary" onclick="goTo('page-track')">Proceed to Tracker</button>
-                        <button class="btn btn-ghost" id="btn-new-report">New Entry</button>
+                <div style="text-align:center;padding:28px 0;">
+                    <div style="font-size:2.5rem;margin-bottom:12px;">&#10003;</div>
+                    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">Report Received</div>
+                    <div style="color:var(--muted);font-size:.85rem;margin-bottom:12px;">Your case ID is</div>
+                    <div id="case-id-display" style="font-size:2.2rem;font-weight:800;color:var(--blue);letter-spacing:.08em;font-family:monospace;"></div>
+                    <div style="color:var(--muted);font-size:.82rem;margin-top:14px;">Save this ID. Use it in <strong style="color:var(--text);">Track My Case</strong> to follow your review status.</div>
+                    <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="goTo('page-track')">Track My Case</button>
+                        <button class="btn btn-ghost btn-sm" id="btn-new-report">Submit another report</button>
                     </div>
                 </div>
             </div>
 
+            <!-- Report form -->
             <form id="report-form" novalidate>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="r-name">Account Name</label>
-                        <input type="text" id="r-name" placeholder="E.g. Alex Chen" autocomplete="name">
+                        <label for="r-name">Full Name *</label>
+                        <input type="text" id="r-name" placeholder="Alex Chen" autocomplete="name">
                         <span class="err-msg" id="err-name"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-email">Registered Email</label>
-                        <input type="email" id="r-email" placeholder="alex@domain.com" autocomplete="email">
+                        <label for="r-email">Email Address *</label>
+                        <input type="email" id="r-email" placeholder="alex@example.com" autocomplete="email">
                         <span class="err-msg" id="err-email"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-side">Vector</label>
+                        <label for="r-side">Position Side *</label>
                         <select id="r-side">
-                            <option value="">Select direction</option>
+                            <option value="">-- select --</option>
                             <option value="long">Long</option>
                             <option value="short">Short</option>
                         </select>
                         <span class="err-msg" id="err-side"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-leverage">Multiplier</label>
+                        <label for="r-leverage">Leverage *</label>
                         <select id="r-leverage">
-                            <option value="">Select leverage</option>
+                            <option value="">-- select --</option>
                             <option value="2">2x</option>
                             <option value="5">5x</option>
                             <option value="10">10x</option>
                             <option value="20">20x</option>
                             <option value="50">50x</option>
+                            <option value="100">100x</option>
                         </select>
                         <span class="err-msg" id="err-leverage"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-entry">Entry Index (INR)</label>
-                        <input type="number" id="r-entry" placeholder="68000">
+                        <label for="r-entry">Entry Price (INR) *</label>
+                        <input type="number" id="r-entry" placeholder="6460000" min="1" step="1">
                         <span class="err-msg" id="err-entry"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-liq-price">Liquidation Tick (INR)</label>
-                        <input type="number" id="r-liq-price" placeholder="55800">
+                        <label for="r-liq-price">Liquidation Price (INR) *</label>
+                        <input type="number" id="r-liq-price" placeholder="5301000" min="1" step="1">
                         <span class="err-msg" id="err-liq-price"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-liq-time">Timestamp (UTC)</label>
-                        <input type="time" id="r-liq-time">
+                        <label for="r-liq-time">Liquidation Time (UTC) *</label>
+                        <input type="time" id="r-liq-time" step="60">
                         <span class="err-msg" id="err-liq-time"></span>
                     </div>
                     <div class="form-group">
-                        <label for="r-loss">Realized Deficit (INR)</label>
-                        <input type="number" id="r-loss" placeholder="4200">
+                        <label for="r-loss">Estimated Loss (INR) *</label>
+                        <input type="number" id="r-loss" placeholder="399000" min="1" step="1">
                         <span class="err-msg" id="err-loss"></span>
                     </div>
                     <div class="form-group full">
-                        <label for="r-desc">Contextual Notes</label>
-                        <textarea id="r-desc" placeholder="Append transaction hashes or raw payload snippets..."></textarea>
+                        <label for="r-desc">Description *</label>
+                        <textarea id="r-desc" placeholder="Describe what happened, include any transaction IDs or screenshots if available."></textarea>
                         <span class="err-msg" id="err-desc"></span>
                     </div>
                 </div>
-                <div style="margin-top:24px;display:flex;gap:16px;align-items:center; border-top: 1px solid var(--border); padding-top: 20px;">
-                    <button type="submit" class="btn btn-primary">Transmit Payload</button>
-                    <span style="font-size:0.8rem;color:var(--muted);">Encrypted & Timestamped</span>
+                <div style="margin-top:16px;display:flex;gap:10px;align-items:center;">
+                    <button type="submit" class="btn btn-primary">Submit Report</button>
+                    <span style="font-size:.75rem;color:var(--muted);">All fields required</span>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- ═══ PAGE: TRACK MY CASE ═══ -->
     <div class="page" id="page-track" role="tabpanel">
-        <div class="card" style="max-width:720px; margin: 0 auto;">
-            <div class="card-title" style="font-size:1.1rem; color:#fff;">Status Query</div>
-            <p style="font-size:0.9rem;color:var(--muted);margin-bottom:20px;">Provide MT-ID or associated address to retrieve pipeline vectors.</p>
-            <div class="row" style="gap:12px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 12px; border: 1px solid var(--border);">
-                <input type="text" id="track-input" placeholder="MT-1042 or address" style="flex:1; border:none; background:transparent; font-size:1rem; box-shadow:none;" aria-label="Case ID">
-                <button class="btn btn-primary" id="btn-track">Query Database</button>
+        <div class="card" style="max-width:680px;">
+            <div class="card-title">Track My Case</div>
+            <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Enter your case ID (e.g. MT-1042) or the email address you used when filing your report.</p>
+            <div class="row" style="gap:8px;">
+                <input type="text" id="track-input" placeholder="MT-1042 or your email" style="flex:1;" aria-label="Case ID or email">
+                <button class="btn btn-primary btn-sm" id="btn-track">Look Up</button>
             </div>
             <div id="case-result"></div>
         </div>
     </div>
 
+    <!-- ═══ PAGE: HELP CENTER ═══ -->
     <div class="page" id="page-help" role="tabpanel">
-        <div class="card" style="max-width:720px; margin: 0 auto;">
-            <div class="card-title">SLA Matrices & Knowledge Base</div>
-            <div style="background:linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border:1px solid rgba(59, 130, 246, 0.2); border-radius:12px; padding:20px; margin-bottom:24px;">
-                <div style="font-size:0.8rem;color:var(--blue);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px; font-weight:700;">Resolution Target</div>
-                <div style="font-size:1.6rem;font-weight:800; color:#fff;" id="help-response-time">T+24 Hours</div>
-                <div style="color:var(--muted);font-size:0.9rem;margin-top:4px;" id="help-queue">Chronological batch processing active.</div>
+        <div class="card" style="max-width:680px;">
+            <div class="card-title">Help Center</div>
+            <div style="background:var(--bg);border-radius:6px;padding:12px 16px;margin-bottom:18px;">
+                <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Expected First Response</div>
+                <div style="font-size:1.1rem;font-weight:700;" id="help-response-time">Under 24 hours</div>
+                <div style="color:var(--muted);font-size:.75rem;margin-top:2px;" id="help-queue">Reviewing all affected accounts in order of submission.</div>
             </div>
-            <div id="faq-container" style="border-top: 1px solid var(--border);"></div>
+            <div id="faq-container"></div>
         </div>
     </div>
 
+    <!-- ═══ PAGE: OPS VIEW ═══ -->
     <div class="page" id="page-ops" role="tabpanel">
-        <div style="background:rgba(139, 92, 246, 0.1);border:1px solid rgba(139, 92, 246, 0.3);border-radius:8px;padding:12px 20px;margin-bottom:24px;font-size:0.85rem;color:#c4b5fd;font-weight:600;display:flex;align-items:center;gap:10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            SECURE CHANNEL – Admin Access Verified
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:.8rem;color:var(--purple);">
+            INTERNAL OPS VIEW -- For hackathon judges only. This page is not user-facing.
         </div>
 
-        <div class="grid-2" style="margin-bottom:24px;">
+        <div class="grid-2" style="margin-bottom:16px;">
+            <!-- Support queue metrics -->
             <div class="card">
-                <div class="card-title">Support Pipeline Volume</div>
-                <div class="grid-2" style="gap:12px;margin-bottom:20px;">
+                <div class="card-title">Support Queue</div>
+                <div class="grid-2" style="gap:10px;margin-bottom:14px;">
                     <div class="stat-box">
                         <div class="stat-label">Tickets Open</div>
                         <div class="stat-value" id="ops-tickets-open">0</div>
@@ -631,89 +632,98 @@
                         <div class="stat-value" id="ops-tickets-resolved">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Avg Delta</div>
+                        <div class="stat-label">Avg Response</div>
                         <div class="stat-value" id="ops-avg-response">--</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">SLA Violations</div>
-                        <div class="stat-value" id="ops-sla" style="color:var(--red);">0</div>
+                        <div class="stat-label">SLA Breaches</div>
+                        <div class="stat-value" id="ops-sla">0</div>
+                        <div class="stat-sub">tickets &gt;4h open</div>
                     </div>
                 </div>
-                <canvas id="queue-canvas" height="140" style="width:100%;border-radius:8px;background:rgba(0,0,0,0.2);"></canvas>
+                <canvas id="queue-canvas" width="400" height="120" style="width:100%;border-radius:4px;"></canvas>
             </div>
 
+            <!-- Insurance fund draw -->
             <div class="card">
-                <div class="card-title">Treasury Reserve Drawdown</div>
-                <div style="margin-bottom:24px; background:rgba(0,0,0,0.2); padding:16px; border-radius:8px; border:1px solid var(--border);">
-                    <div class="row" style="justify-content:space-between;font-size:0.9rem;margin-bottom:12px;">
-                        <span style="color:var(--muted);">Initial Capital</span>
-                        <span class="mono" id="ops-fund-start" style="color:#fff;">₹4,200,000</span>
+                <div class="card-title">Insurance Fund Draw</div>
+                <div style="margin-bottom:14px;">
+                    <div class="row" style="justify-content:space-between;font-size:.82rem;margin-bottom:6px;">
+                        <span style="color:var(--muted);">Starting balance</span>
+                        <span class="mono" id="ops-fund-start">₹399,000,000</span>
                     </div>
-                    <div class="row" style="justify-content:space-between;font-size:0.9rem;margin-bottom:12px;">
-                        <span style="color:var(--muted);">Authorized Disbursements</span>
-                        <span class="mono" id="ops-comp-approved" style="color:var(--red); font-weight:700;">₹0</span>
+                    <div class="row" style="justify-content:space-between;font-size:.82rem;margin-bottom:6px;">
+                        <span style="color:var(--muted);">Compensation approved</span>
+                        <span class="mono" id="ops-comp-approved" style="color:var(--red);">₹0</span>
                     </div>
-                    <div class="row" style="justify-content:space-between;font-size:1rem;font-weight:800;border-top:1px dashed var(--border);padding-top:12px;margin-top:8px;">
-                        <span>Current Liquidity</span>
-                        <span class="mono" id="ops-fund-current" style="color:var(--green);">₹4,200,000</span>
+                    <div class="row" style="justify-content:space-between;font-size:.82rem;font-weight:700;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
+                        <span>Current balance</span>
+                        <span class="mono" id="ops-fund-current">₹399,000,000</span>
                     </div>
                 </div>
-                <div style="height:12px;background:rgba(0,0,0,0.3);border-radius:6px;overflow:hidden;border:1px solid var(--border);">
-                    <div id="ops-fund-bar" style="height:100%;background:var(--green);width:100%;border-radius:6px;transition:all 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--green);"></div>
+                <div style="height:10px;background:var(--bg);border-radius:5px;overflow:hidden;">
+                    <div id="ops-fund-bar" style="height:100%;background:var(--green);width:100%;border-radius:5px;transition:width .4s;"></div>
                 </div>
-                <div style="font-size:0.8rem;color:var(--muted);margin-top:10px;text-align:right;font-weight:600;" id="ops-fund-pct">100.0% Reserve</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:6px;" id="ops-fund-pct">100.0% remaining</div>
             </div>
         </div>
 
+        <!-- Team tasks -->
         <div class="card">
-            <div class="card-title">Core Node Allocations</div>
-            <div id="team-container" class="grid-4"></div>
+            <div class="card-title">Team Current Tasks (3-person team)</div>
+            <div id="team-container"></div>
         </div>
     </div>
 
+    <!-- Tour caption bar (Feature 3, hidden until tour starts) -->
     <div id="tour-bar" class="hidden">
-        <span id="tour-step">Seq 1/12</span>
-        <div id="tour-caption">Awaiting commands.</div>
-        <button class="btn btn-ghost btn-sm" id="btn-tour-pause" onclick="togglePause()">Halt</button>
-        <button class="btn btn-ghost btn-sm" id="btn-tour-exit" onclick="exitTour()">Terminate</button>
+        <span id="tour-step" style="color:var(--purple);">Step 1 / 12</span>
+        <div id="tour-caption">Welcome to the guided tour.</div>
+        <button class="btn btn-ghost btn-sm" id="btn-tour-pause" onclick="togglePause()">Pause</button>
+        <button class="btn btn-ghost btn-sm" id="btn-tour-exit" onclick="exitTour()">Exit tour</button>
         <span id="tour-replay" class="hidden">
-            <button class="btn btn-primary btn-sm" id="btn-tour-replay">Pivot Vector</button>
+            <button class="btn btn-primary btn-sm" id="btn-tour-replay">Replay with other scenario</button>
         </span>
     </div>
 
     <script>
-        const CFG = {
-            BASE_PRICE: 68000,
-            CRASH_DROP_PCT: 0.18,
-            REBOUND_PCT: 0.40,
-            CRASH_MINUTE: 4,
-            CRASH_DURATION_MIN: 2,
-            REBOUND_START_MIN: 8,
-            GAP_THRESHOLD_PCT: 5,
-            COMP_CAP: 15000,
-            INSURANCE_START: 4200000,
-            INCIDENT_MINUTES: 60,
-            NOISE_AMPLITUDE: 120,
-            TICK_MS: 200,
-            VERDICT_MINUTE: 12,
+
+        /* ── CONFIG: change any key number here ─────────────────────────────── */
+        var CFG = {
+            BASE_PRICE: 6460000,       // BTC-PERP price before the crash (INR)
+            CRASH_DROP_PCT: 0.18,    // crash magnitude: 18% drop
+            REBOUND_PCT: 0.40,       // fraction of drop that rebounds
+            CRASH_MINUTE: 4,         // sim minute when crash starts
+            CRASH_DURATION_MIN: 2,   // how many sim minutes the drop takes
+            REBOUND_START_MIN: 8,    // sim minute rebound begins
+            GAP_THRESHOLD_PCT: 5,    // % mark-index gap that triggers warning + comp eligibility
+            COMP_CAP: 1425000,         // max compensation per user (INR)
+            INSURANCE_START: 399000000,// insurance fund starting balance (INR)
+            INCIDENT_MINUTES: 60,    // total incident length in sim-minutes
+            NOISE_AMPLITUDE: 11400,    // random price noise amplitude (INR)
+            TICK_MS: 200,            // real milliseconds per simulation tick
+            VERDICT_MINUTE: 12,      // sim minute the cause verdict is shown (Feature 1)
         };
 
-        const SCENARIOS = {
+        /* ── SCENARIOS (Feature 1b) ─────────────────────────────────────────── */
+        var SCENARIOS = {
             market: {
-                label: 'Market-wide crash',
-                peakGapPct: 0.6,
-                verdict: 'Market Sync: Liquidations Stand'
+                label: 'Market-wide crash',             // human label for this scenario
+                peakGapPct: 0.6,                        // mark stayed within 1% of index -- no fault
+                verdict: 'Market-wide move: liquidations stand' // shown in verdict card
             },
             fault: {
-                label: 'System Feed Fault',
-                peakGapPct: 8.2,
-                verdict: 'Desync Detected: Compensation Path'
+                label: 'MochaTrade price-feed fault',   // human label
+                peakGapPct: 8.2,                        // mark dipped ~8% below index -- our fault
+                verdict: 'Pricing fault: compensation track' // shown in verdict card
             }
         };
 
-        const sc = () => SCENARIOS[state.scenario];
+        // Helper: returns the active scenario object
+        function sc() { return SCENARIOS[state.scenario]; }
 
-        let state = {
+        /* ── STATE ──────────────────────────────────────────────────────────── */
+        var state = {
             running: false,
             simMinute: 0,
             tickCount: 0,
@@ -734,320 +744,369 @@
             cases: {},
             caseCounter: 1000,
             speedMult: 10,
-            scenario: 'fault',
-            tourOn: false,
-            tourAutoNav: true,
-            tourShown: [],
+            scenario: 'fault',   // active scenario: 'fault' or 'market' (Feature 1)
+            tourOn: false,       // true while guided tour is running (Feature 3)
+            tourAutoNav: true,   // false once user manually clicks a tab during tour
+            tourShown: [],       // indices of TOUR steps already shown
         };
 
-        let tickInterval = null;
+        var tickInterval = null;
 
-        const getIndexPrice = (t) => {
-            const preTop = CFG.BASE_PRICE + CFG.CRASH_MINUTE * 40;
-            if (t < CFG.CRASH_MINUTE) return CFG.BASE_PRICE + t * 40;
+        /* ── PRICE CURVE ────────────────────────────────────────────────────── */
+        // Returns the index (fair) price at a given sim minute
+        function getIndexPrice(t) {
+            var preTop = CFG.BASE_PRICE + CFG.CRASH_MINUTE * 3800;
+            if (t < CFG.CRASH_MINUTE) {
+                return CFG.BASE_PRICE + t * 3800;
+            }
             if (t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) {
-                const progress = (t - CFG.CRASH_MINUTE) / CFG.CRASH_DURATION_MIN;
+                var progress = (t - CFG.CRASH_MINUTE) / CFG.CRASH_DURATION_MIN;
                 return preTop - (CFG.BASE_PRICE * CFG.CRASH_DROP_PCT * progress);
             }
-            const crashLow = preTop - CFG.BASE_PRICE * CFG.CRASH_DROP_PCT;
-            if (t < CFG.REBOUND_START_MIN) return crashLow;
-            const reboundProgress = Math.min(1, (t - CFG.REBOUND_START_MIN) / 30);
+            var crashLow = preTop - CFG.BASE_PRICE * CFG.CRASH_DROP_PCT;
+            if (t < CFG.REBOUND_START_MIN) {
+                return crashLow;
+            }
+            var reboundProgress = Math.min(1, (t - CFG.REBOUND_START_MIN) / 30);
             return crashLow + (CFG.BASE_PRICE * CFG.CRASH_DROP_PCT * CFG.REBOUND_PCT * reboundProgress);
-        };
+        }
 
-        const getMarkPrice = (t, indexP) => {
-            const noise = (Math.random() - 0.5) * 2 * CFG.NOISE_AMPLITUDE;
-            const peakFrac = sc().peakGapPct / 100;
-            const convFrac = peakFrac * 0.25;
-            if (t < CFG.CRASH_MINUTE) return indexP + (Math.random() - 0.5) * 60;
+        // FIX 0: Mark price SUBTRACTS the gap so it dips BELOW the index during the crash.
+        // Uses sc().peakGapPct so Scenario A (market) shows almost no gap, B (fault) shows ~8%.
+        function getMarkPrice(t, indexP) {
+            var noise    = (Math.random() - 0.5) * 2 * CFG.NOISE_AMPLITUDE;
+            var peakFrac = sc().peakGapPct / 100;  // e.g. 0.082 for fault, 0.006 for market
+            var convFrac = peakFrac * 0.25;         // residual during convergence
+            if (t < CFG.CRASH_MINUTE) {
+                return indexP + (Math.random() - 0.5) * 5700;
+            }
             if (t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) {
-                const lagFactor = 1 - (t - CFG.CRASH_MINUTE) / CFG.CRASH_DURATION_MIN;
+                // Mark LAGS -- dips further below index as crash deepens
+                var lagFactor = 1 - (t - CFG.CRASH_MINUTE) / CFG.CRASH_DURATION_MIN;
                 return indexP - CFG.BASE_PRICE * peakFrac * lagFactor + noise * 0.5;
             }
             if (t < CFG.REBOUND_START_MIN + 6) {
-                const conv = Math.min(1, (t - CFG.CRASH_MINUTE - CFG.CRASH_DURATION_MIN) / 8);
+                // Slowly converge back toward index
+                var conv = Math.min(1, (t - CFG.CRASH_MINUTE - CFG.CRASH_DURATION_MIN) / 8);
                 return indexP - CFG.BASE_PRICE * convFrac * (1 - conv) + noise * 0.3;
             }
-            return indexP + (Math.random() - 0.5) * 80;
-        };
+            return indexP + (Math.random() - 0.5) * 7600;
+        }
 
-        const PHASES = [
+        // Mark-price range reached while the mark-index gap was above the threshold.
+        // Same formula as getMarkPrice, without the random noise.
+        function getEligibleBand(peakGap) {
+            var low = Infinity, high = 0;
+            for (var m = CFG.CRASH_MINUTE; m < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN; m += 0.01) {
+                var idx  = getIndexPrice(m);
+                var lag  = 1 - (m - CFG.CRASH_MINUTE) / CFG.CRASH_DURATION_MIN;
+                var mark = idx - CFG.BASE_PRICE * (peakGap / 100) * lag;
+                if ((idx - mark) / idx * 100 > CFG.GAP_THRESHOLD_PCT) {
+                    low  = Math.min(low, mark);
+                    high = Math.max(high, mark);
+                }
+            }
+            if (high === 0) { return { low: 0, high: 0 }; }
+            return { low: low, high: high };
+        }
+
+        /* ── PHASES ─────────────────────────────────────────────────────────── */
+        var PHASES = [
             {
-                name: 'Detection', time: 'T+00:00 - T+05:00', startMin: 0, endMin: 5,
-                desc: 'Telemetry divergence logged. Duty officers paged.',
+                name: 'Detect', time: 'T+00:00 - T+05:00', startMin: 0, endMin: 5,
+                desc: 'Anomaly detected by automated alerts. Team waking up.',
                 actions: [
-                    { owner: 'Eng', text: 'Oracle divergence trigger activated', doneAt: 1 },
-                    { owner: 'Ops', text: 'Order book depth audit initiated', doneAt: 2 },
-                    { owner: 'Eng', text: 'Index feed delta logs archived', doneAt: 3 },
-                    { owner: 'Comms', text: 'Social velocity metrics elevated', doneAt: 4 },
+                    { owner: 'Engineering', text: 'PagerDuty alert fires -- price oracle deviation detected', doneAt: 1 },
+                    { owner: 'Trading Ops', text: 'Manual review of order book depth and liquidation queue', doneAt: 2 },
+                    { owner: 'Engineering', text: 'Pull index price feed logs from the past 15 minutes', doneAt: 3 },
+                    { owner: 'Support',     text: 'Monitor inbound ticket volume and social mentions', doneAt: 4 },
                 ]
             },
             {
-                name: 'Containment', time: 'T+05:00 - T+15:00', startMin: 5, endMin: 15,
-                desc: 'Circuit breakers armed. System in Reduce-Only state.',
+                name: 'Contain', time: 'T+05:00 - T+15:00', startMin: 5, endMin: 15,
+                desc: 'Halt further damage. Engage circuit-breakers and Reduce-Only mode.',
                 actions: [
-                    { owner: 'Eng', text: 'BTC-PERP clamped to Reduce-Only', doneAt: 6 },
-                    { owner: 'Ops', text: 'Liquidation engine halted', doneAt: 7 },
-                    { owner: 'Eng', text: 'Mark-price bounds locked (±5%)', doneAt: 9 },
-                    { owner: 'Comms', text: 'T+10 Initial broadcast fired', doneAt: 10 },
-                    { owner: 'Ops', text: 'Global state snapshot recorded', doneAt: 12 },
+                    { owner: 'Engineering', text: 'Switch BTC-PERP to Reduce-Only mode -- block new longs', doneAt: 6 },
+                    { owner: 'Trading Ops', text: 'Pause liquidation engine pending assessment', doneAt: 7 },
+                    { owner: 'Engineering', text: 'Activate mark-price circuit-breaker (+/-5% clamp)', doneAt: 9 },
+                    { owner: 'Support',     text: 'Publish first public acknowledgment and start the 5-minute update cadence', doneAt: 10 },
+                    { owner: 'Trading Ops', text: 'Snapshot all position data and prices at crash low', doneAt: 12 },
                 ]
             },
             {
-                name: 'Stabilization', time: 'T+15:00 - T+30:00', startMin: 15, endMin: 30,
-                desc: 'Market parameters stabilizing. Forensic node active.',
+                name: 'Stabilize', time: 'T+15:00 - T+30:00', startMin: 15, endMin: 30,
+                desc: 'Markets stabilizing. Forensic analysis of root cause.',
                 actions: [
-                    { owner: 'Eng', text: 'Order book fracture localized', doneAt: 16 },
-                    { owner: 'Eng', text: 'Depth guard hotpatch deployed', doneAt: 20 },
-                    { owner: 'Ops', text: 'Reduce-Only locks disengaged', doneAt: 22 },
-                    { owner: 'Comms', text: 'Root-cause diagnostic published', doneAt: 25 },
-                    { owner: 'Ops', text: 'Eligibility ledger initialized', doneAt: 28 },
+                    { owner: 'Engineering', text: 'Root cause identified: thin order book depth at 3-sigma level', doneAt: 16 },
+                    { owner: 'Engineering', text: 'Deploy hotfix: minimum order book depth guard activated', doneAt: 20 },
+                    { owner: 'Trading Ops', text: 'Lift Reduce-Only mode -- BTC-PERP resumes normal trading', doneAt: 22 },
+                    { owner: 'Support',     text: 'Root-cause update published on the status page', doneAt: 25 },
+                    { owner: 'Trading Ops', text: 'Begin mark-vs-index gap audit for compensation eligibility', doneAt: 28 },
                 ]
             },
             {
-                name: 'Policy Matrix', time: 'T+30:00 - T+45:00', startMin: 30, endMin: 45,
-                desc: 'Resolving liability vectors and reserve allocation.',
+                name: 'Decide', time: 'T+30:00 - T+45:00', startMin: 30, endMin: 45,
+                desc: 'Compensation policy decision. Insurance fund review.',
                 actions: [
-                    { owner: 'Ops', text: 'Deviation nodes mapped', doneAt: 32 },
-                    { owner: 'Eng', text: 'Execution logs aggregated', doneAt: 35 },
-                    { owner: 'Ops', text: 'Compensation calculus locked', doneAt: 38 },
-                    { owner: 'Comms', text: 'Policy broadcast executed', doneAt: 40 },
-                    { owner: 'Ops', text: 'Treasury drawdown signed', doneAt: 43 },
+                    { owner: 'Trading Ops', text: 'Identify all liquidations during >5% mark-index gap window', doneAt: 32 },
+                    { owner: 'Engineering', text: 'Export liquidation records with mark and index price columns', doneAt: 35 },
+                    { owner: 'Trading Ops', text: 'Set formula: loss x (gap% - 5%) / gap%, capped at ₹1,425,000', doneAt: 38 },
+                    { owner: 'Support',     text: 'Compensation criteria announced on the status page', doneAt: 40 },
+                    { owner: 'Trading Ops', text: 'Insurance fund draw approved by team (unanimous)', doneAt: 43 },
                 ]
             },
             {
-                name: 'Restoration', time: 'T+45:00 - T+60:00', startMin: 45, endMin: 60,
-                desc: 'Disbursing credits. Telemetry reset to nominal.',
+                name: 'Recover', time: 'T+45:00 - T+60:00', startMin: 45, endMin: 60,
+                desc: 'Credits applied. Post-mortem scheduled within 72 hours.',
                 actions: [
-                    { owner: 'Eng', text: 'Automated credit injection live', doneAt: 47 },
-                    { owner: 'Comms', text: 'Client resolution payloads sent', doneAt: 50 },
-                    { owner: 'Eng', text: 'Telemetry thresholds hardened (2%)', doneAt: 53 },
-                    { owner: 'Comms', text: 'Terminal broadcast logged', doneAt: 60 },
-                    { owner: 'Ops', text: 'Post-mortem timeline set (48h)', doneAt: 60 },
+                    { owner: 'Engineering', text: 'Compensation credits pushed automatically to eligible accounts', doneAt: 47 },
+                    { owner: 'Support',     text: 'Email notifications sent to all affected users', doneAt: 50 },
+                    { owner: 'Engineering', text: 'Enhanced monitoring deployed: alert at 2% mark-price deviation', doneAt: 53 },
+                    { owner: 'Support',     text: 'Final public update: 60-minute summary published', doneAt: 60 },
+                    { owner: 'Trading Ops', text: 'Post-mortem report scheduled: 48-72 hours from incident start', doneAt: 60 },
                 ]
             },
         ];
 
-        const UPDATES = [
+        /* ── STATUS UPDATES ─────────────────────────────────────────────────── */
+        // title and msg may be a plain string (same for both scenarios)
+        // or {market, fault} object -- prependUpdate() resolves via state.scenario.
+        var UPDATES = [
             {
-                minute: 10, sev: 'red', title: 'System Anomaly Detected',
-                msg: 'Telemetry indicates extreme volatility in BTC-PERP starting 09:04 UTC. Engineering nodes are investigating state variances. Causation unknown. Next broadcast in 5 minutes.'
+                // T+10: identical in both scenarios -- facts only, no cause speculation
+                minute: 10, sev: 'red', title: 'Incident Acknowledged',
+                msg: 'We are aware of unusual price activity on BTC-PERP beginning at approximately 09:04 UTC. Our team is actively investigating. All affected positions have been logged. We do not yet have information on the root cause and will not speculate. Next update in 5 minutes.'
             },
             {
-                minute: 15, sev: 'amber', title: 'Containment Protocol Active',
-                msg: 'BTC-PERP locked to reduce-only. Liquidation engine paused pending integrity checks. Fiat bridges and other pairs remain nominal. Next broadcast in 5 minutes.'
+                minute: 15, sev: 'amber', title: 'BTC-PERP in Reduce-Only Mode',
+                msg: 'BTC-PERP is in reduce-only mode: you can close or reduce positions but not open new ones. We briefly paused automated liquidations while we checked our pricing, and a mark-price circuit-breaker is active. All other markets are unaffected and funds are safe. We are still investigating and will not speculate on the cause. Next update in 5 minutes.'
             },
             {
                 minute: 20, sev: 'amber',
-                title: { market: 'Oracle Sync Verified', fault: 'Internal Desync Located' },
+                title: { market: 'Price Cross-Check Complete', fault: 'Source of Price Distortion Located' },
                 msg: {
-                    market: 'Index feeds mapped against external providers show perfect sync. Internal mark price tracked within bounds. Proceeding to ledger audit. Next broadcast in 5 minutes.',
-                    fault: 'Vector of mark price deviation isolated. Hotpatch compiling for deployment. Reduce-only lock holds. Next broadcast in 5 minutes.'
+                    market: 'We compared our index price with other major venues and it matched throughout the move. Our mark price stayed close to the index and we have found no fault in our pricing so far. We are now checking liquidation records one by one. Next update in 5 minutes.',
+                    fault:  'We have located the source of the price distortion and are deploying a protective fix now. BTC-PERP stays in reduce-only mode until the fix is verified. A full explanation follows in the next update. Next update in 5 minutes.'
                 }
             },
             {
+                // T+25: cause published -- text differs by scenario
                 minute: 25, sev: 'amber',
-                title: { market: 'Diagnosis: Market Execution', fault: 'Diagnosis: Liquidity Fracture' },
+                title: { market: 'Cause Identified: Market-Wide Move', fault: 'Root Cause Identified' },
                 msg: {
-                    market: 'Global 18% drawdown confirmed. Mark deviation held below 1%. Executions represent valid market reality. Initiating individual ledger reviews. Next broadcast in 5 minutes.',
-                    fault: 'A liquidity vacuum triggered cascading liquidations, tearing the mark price >5% below index. Patch deployed. Validating ledger for treasury coverage. Next broadcast in 5 minutes.'
+                    market: 'BTC fell about 18% across major venues. Our mark price stayed within 1% of the index throughout, so liquidations were triggered at fair prices. We have found no fault in our pricing so far. We are verifying liquidation records. Next update in 5 minutes.',
+                    fault:  'We have identified the root cause: insufficient order book depth at an extreme price level created a cascade of liquidations that temporarily moved the BTC-PERP mark price more than 5% below the index price. A hotfix has been deployed. BTC-PERP is now trading normally. We are auditing all liquidation records to determine compensation eligibility. Next update in 5 minutes.'
                 }
             },
             {
                 minute: 30, sev: 'amber',
-                title: { market: 'Locks Lifted. Reviews Active.', fault: 'Locks Lifted. Audits Active.' },
+                title: { market: 'BTC-PERP Restored, Case Reviews Under Way', fault: 'BTC-PERP Restored, Audit Under Way' },
                 msg: {
-                    market: 'BTC-PERP trading restored. Manual cross-referencing available via support channels for liquidated accounts. Next broadcast in 5 minutes.',
-                    fault: 'BTC-PERP trading restored. Accounts liquidated during the >5% deviation window are under programmatic audit. Criteria incoming. Next broadcast in 5 minutes.'
+                    market: 'BTC-PERP has been trading normally since T+22. We are re-checking each liquidation against the index price at the time it happened. If you were liquidated and want a review, file a report and you will get a case ID. Next update in 5 minutes.',
+                    fault:  'BTC-PERP has been trading normally since T+22. We are now auditing liquidations that happened while the mark price was more than 5% away from the index. Compensation criteria will be published before any decisions are made. No amounts are confirmed yet. Next update in 5 minutes.'
                 }
             },
             {
-                minute: 35, sev: 'amber', title: 'Ticketing System Alert',
-                msg: 'Queue flooding detected. Duplicate payloads degrade processing speed. Use assigned MT-ID hashes to track state. Processing chronologically. Next broadcast in 5 minutes.'
+                minute: 35, sev: 'amber', title: 'Support Update: Filing and Tracking Cases',
+                msg: 'We know many of you are waiting for answers and ticket volume is high. Reports filed through Report an Issue get a case ID straight away and can be followed on Track My Case, so please file once rather than sending several messages. Filed cases are reviewed in order of submission. Next update in 5 minutes.'
             },
             {
+                // T+40: review policy -- differs by scenario
                 minute: 40, sev: 'amber',
-                title: { market: 'Finalized Review Policy', fault: 'Compensation Calculus Set' },
+                title: { market: 'Liquidation Review Policy', fault: 'Compensation Criteria Announced' },
                 msg: {
-                    market: 'Executions processed within the 1% tracking bound stand as permanent. Requests for manual index verification are open. Next broadcast in 5 minutes.',
-                    fault: 'Eligible accounts receive: Loss × (Gap% - 5%) / Gap%. Capped at ₹15,000. Do not submit secondary requests. Next broadcast in 5 minutes.'
+                    market: 'Because our prices tracked the market, liquidations executed during this move will stand. Anyone can request a review and we will re-check the trade against the index. Compensation is only offered where our own pricing deviated from the index by more than 5%, which did not happen here. Next update in 5 minutes.',
+                    fault:  'Accounts whose liquidation occurred during the period when the mark price deviated more than 5% from the index price are eligible for partial compensation from the insurance fund. Formula: Loss x (gap% - 5%) / gap%, capped at ₹1,425,000 per account. We will not confirm totals until the full audit is complete. File a report if you have not already done so. Next update in 5 minutes.'
                 }
             },
             {
                 minute: 45, sev: 'amber',
-                title: { market: 'Ledger Verification Stream', fault: 'Treasury Disbursing' },
+                title: { market: 'Case Reviews Continue', fault: 'Compensation Funding Confirmed' },
                 msg: {
-                    market: 'Data packages linking individual liquidations to exact index timestamps are broadcasting to user emails. Disputes resolved in 48h. Next broadcast in 5 minutes.',
-                    fault: 'Reserve draw authorized. Credits injecting into affected accounts now. Mathematical breakdowns visible via Track Case interface. Next broadcast in 5 minutes.'
+                    market: 'Every filed case gets a written explanation showing the index price at the time of the liquidation. If you disagree with an outcome, reply with additional evidence and we will re-review within 48 hours. Next update in 5 minutes.',
+                    fault:  'The insurance fund can cover eligible compensation within the ₹1,425,000 per-account cap. Credits start going out shortly and are applied automatically to eligible accounts. Your outcome and full calculation will appear in Track My Case. Next update in 5 minutes.'
                 }
             },
             {
-                minute: 50, sev: 'green', title: 'Client Sync Achieved',
+                minute: 50, sev: 'green', title: 'Outcome Emails Sent',
                 msg: {
-                    market: 'All logged cases matched against immutable index data and dispatched. Track Case portal reflects final state. Next broadcast in 5 minutes.',
-                    fault: 'All eligible nodes injected with compensation liquidity. Calculations committed to Track Case portal. Next broadcast in 5 minutes.'
+                    market: 'Emails with individual case outcomes and the index price used have been sent to everyone who filed a report. You can also see your outcome in Track My Case. Next update in 5 minutes.',
+                    fault:  'Emails with individual case outcomes have been sent to everyone who filed a report, and compensation credits are being applied. You can see your calculation in Track My Case. Next update in 5 minutes.'
                 }
             },
             {
-                minute: 55, sev: 'green', title: 'Telemetry Hardened',
-                msg: 'New tripwires engaged: 2% deviation now triggers automatic pager response. Granular architectural changes pending post-mortem. Terminal update at T+60.'
+                minute: 55, sev: 'green', title: 'Stronger Monitoring Deployed',
+                msg: 'We have added an alert that triggers when our mark price and the index price differ by 2%, so the team is paged much earlier next time. The full list of changes will be in the post-mortem. The final summary follows at T+60.'
             },
             {
+                // T+60: summary -- differs by scenario
                 minute: 60, sev: 'green',
-                title: { market: 'Terminal State: Incident Resolved', fault: 'Terminal State: Resolved & Compensated' },
+                title: { market: '60-Minute Summary: Incident Contained', fault: '60-Minute Summary -- Incident Contained' },
                 msg: {
-                    market: 'Operations nominal. Support SLAs returning to baseline. Full incident architectural review rendering in 48-72h.',
-                    fault: 'Operations nominal. Treasury draw complete. Structural fix holds. Full post-mortem document rendering in 48-72h. Logging out.'
+                    market: 'BTC-PERP has been trading normally since T+22. Every filed case has been checked against the index. A post-mortem with the timeline and the risk changes we are making will be published within 48-72 hours.',
+                    fault:  'BTC-PERP has been trading normally since T+22. All eligible compensation credits are being applied now. A full post-mortem covering root cause, timeline, and systemic changes will be published within 48-72 hours. We will not close this incident page until the post-mortem is live. Thank you for your patience.'
                 }
             },
         ];
 
-        const TEAM = [
-            { name: 'Node: P-Alpha', role: 'Engineering Lead', taskKey: 'eng' },
-            { name: 'Node: K-Beta',  role: 'Market Ops',      taskKey: 'ops' },
-            { name: 'Node: Z-Gamma', role: 'Comms Core',      taskKey: 'sup' },
+        /* ── TEAM TASKS (Ops view) ──────────────────────────────────────────── */
+        var TEAM = [
+            { name: 'Priya S.', role: 'Co-Founder / Engineering Lead', taskKey: 'eng' },
+            { name: 'Kofi M.',  role: 'Co-Founder / Trading Ops',      taskKey: 'ops' },
+            { name: 'Zara W.',  role: 'Support & Comms Lead',           taskKey: 'sup' },
         ];
 
-        const TEAM_TASKS = {
+        var TEAM_TASKS = {
             eng: [
-                { until: 3,  task: 'Auditing oracle feeds' },
-                { until: 7,  task: 'Executing Reduce-Only lock' },
-                { until: 10, task: 'Deploying bounds clamp' },
-                { until: 21, task: 'Tracing book fragmentation' },
-                { until: 26, task: 'Injecting depth guard patch' },
-                { until: 36, task: 'Dumping raw ledger execution data' },
-                { until: 48, task: 'Piping credits via treasury API' },
-                { until: 60, task: 'Hardening bounds alerts to 2%' },
+                { until: 3,  task: 'Monitoring price feeds and automated alerts' },
+                { until: 7,  task: 'Switching BTC-PERP to Reduce-Only mode' },
+                { until: 10, task: 'Activating mark-price circuit-breaker' },
+                { until: 21, task: 'Diagnosing root cause -- order book depth analysis' },
+                { until: 26, task: 'Deploying hotfix: minimum depth guard' },
+                { until: 36, task: 'Exporting liquidation records with price columns' },
+                { until: 48, task: 'Pushing compensation credits to accounts' },
+                { until: 60, task: 'Deploying enhanced 2% mark-deviation alert' },
             ],
             ops: [
-                { until: 3,  task: 'Scanning liquidity voids' },
-                { until: 8,  task: 'Killing liquidation cron jobs' },
-                { until: 13, task: 'Capturing state snapshot' },
-                { until: 23, task: 'Reversing system locks' },
-                { until: 29, task: 'Mapping index deviation vectors' },
-                { until: 39, task: 'Programming compensation logic' },
-                { until: 44, task: 'Signing multi-sig reserve draw' },
-                { until: 60, task: 'Formatting post-mortem ledger' },
+                { until: 3,  task: 'Reviewing order book depth and liquidation queue' },
+                { until: 8,  task: 'Pausing liquidation engine for assessment' },
+                { until: 13, task: 'Snapshotting positions and prices at crash low' },
+                { until: 23, task: 'Lifting Reduce-Only mode -- monitoring closely' },
+                { until: 29, task: 'Auditing mark-vs-index gap across all liquidations' },
+                { until: 39, task: 'Setting compensation formula and thresholds' },
+                { until: 44, task: 'Approving insurance fund draw -- team consensus' },
+                { until: 60, task: 'Scheduling post-mortem document and timeline' },
             ],
             sup: [
-                { until: 5,  task: 'Tracking volume velocity' },
-                { until: 11, task: 'Broadcasting T+10 payload' },
-                { until: 26, task: 'Pulsing 5m updates' },
-                { until: 41, task: 'Pushing policy broadcasts' },
-                { until: 51, task: 'Firing resolution emails' },
-                { until: 60, task: 'Terminal broadcast prep' },
+                { until: 5,  task: 'Monitoring ticket volume and social media mentions' },
+                { until: 11, task: 'Publishing first public acknowledgment (T+10)' },
+                { until: 26, task: 'Posting 5-minute status updates; root-cause update at T+25' },
+                { until: 41, task: 'Posting 5-minute updates; publishing compensation criteria (T+40)' },
+                { until: 51, task: 'Emailing affected users with case outcomes; 5-minute updates continue' },
+                { until: 60, task: 'Final 5-minute updates, then 60-minute summary and post-mortem doc' },
             ],
         };
 
-        const FAQ = [
+        /* ── FAQ ────────────────────────────────────────────────────────────── */
+        // 'a' may be a plain string or {market, fault} -- buildFAQ() resolves via state.scenario.
+        var FAQ = [
             {
-                q: 'Is my core liquidity secure?',
-                a: 'Affirmative. Spot ledgers and unrelated margin pools are cryptographically isolated. Only BTC-PERP leveraged positions were exposed.'
+                q: 'Are my funds safe?',
+                a: 'Yes. Your non-leveraged spot balances and margin balances not involved in BTC-PERP positions are unaffected. Funds in positions that were liquidated are under review.'
             },
             {
-                q: 'Explain my liquidation event.',
+                q: 'Why was I liquidated?',
                 a: {
-                    market: 'A systemic 18% macro drawdown occurred. Our telemetry mirrored the global index. Your leverage threshold was breached by valid market mechanics.',
-                    fault:  'A system anomaly caused our mark price to drop >5% below true index. If your position hit its threshold solely due to this distorted gap, it represents a system failure.'
+                    // Scenario A: market-wide -- mark stayed close to index
+                    market: 'BTC-PERP experienced extreme short-duration volatility driven by a market-wide move. Our mark price tracked the index closely throughout. High-leverage long positions hit their liquidation thresholds at prices that accurately reflected the market at that moment.',
+                    // Scenario B: our fault -- mark drifted far from index
+                    fault:  'BTC-PERP experienced extreme short-duration volatility. The mark price -- which drives liquidations -- temporarily dipped more than 5% below the index price due to a pricing fault on our side. High-leverage long positions hit their liquidation thresholds at prices that did not accurately reflect the true market at that moment.'
                 }
             },
             {
-                q: 'What governs the compensation matrix?',
+                q: 'How is compensation decided?',
                 a: {
-                    market: 'System mapping confirms our mark stayed within 1% of index reality. Liquidation events during this window stand. Submit a ticket for granular timestamp verification.',
-                    fault:  'We execute on a mathematical reality: Loss × (Gap% - 5%) / Gap%. The cap is ₹15,000. Calculations are immutable and visible within your case portal.'
+                    market: 'We compare your liquidation mark price to the index at that moment. Our mark stayed within 1% of the index throughout this incident, so no compensation is due. Any filed case is reviewed against the recorded index prices and you will receive a written explanation.',
+                    fault:  'We compare your liquidation mark price to the index at the moment of liquidation. If the gap exceeded 5%, you are eligible for partial compensation. The formula is: Loss x (gap% - 5%) / gap%, capped at ₹1,425,000 per account. The full calculation is shown transparently in your case record.'
                 }
             },
             {
-                q: 'Broadcast schedule?',
-                a: 'System commits to 5-minute automated pulses during active containment. A deeply technical post-mortem drops in 48-72 hours.'
+                q: 'When is the next update?',
+                a: 'We commit to a public update every 5 minutes for the first hour of the incident. After the incident is contained, a full post-mortem will be published within 48-72 hours covering root cause, timeline, and permanent fixes.'
             },
             {
-                q: 'BTC-PERP operational status?',
-                a: 'Fully restored at T+22. Fixes merged to main. Order matching is nominal.'
+                q: 'Can I still trade BTC-PERP?',
+                a: 'Yes. BTC-PERP returned to normal two-way trading at approximately T+22 minutes into the incident. All other markets on MochaTrade were unaffected throughout.'
             },
             {
-                q: 'Can I negotiate my payout?',
-                a: 'Negative. The math applies uniformly across the affected ledger. Disbursal happens programmatically from the treasury reserve.'
+                q: 'Will you promise compensation before the audit?',
+                a: 'No. We do not make compensation promises before the eligibility audit is complete. What we commit to: transparent criteria published before decisions, an open formula, and payment from the insurance fund within 24 hours of a decision being reached on your specific case.'
             },
         ];
 
-        const TOUR = [
-            { minute: 0,  page: 'page-dashboard', text: 'Nominal environment. BTC-PERP stable. Tracking parameters active.' },
-            { minute: 4,  page: 'page-dashboard', text: 'T+04: Volatility spike. 18% baseline drop. Telemetry flags deviation.' },
-            { minute: 6,  page: 'page-ops',       text: 'T+06: Core nodes engage. Tasks shift dynamically as ticket volume escalates.' },
-            { minute: 10, page: 'page-updates',   text: 'T+10: Initial automated pulse. Zero speculation. Firm update cadence established.' },
+        /* ── TOUR STEPS (Feature 3c) ─────────────────────────────────────────── */
+        // text may be a plain string or {market, fault} object -- resolved in tick().
+        var TOUR = [
+            { minute: 0,  page: 'page-dashboard', text: 'Normal trading. BTC-PERP near ₹6.46M. This is the first 60 minutes of the incident, sped up. Watch the clock, chart and counters.' },
+            { minute: 4,  page: 'page-dashboard', text: 'T+04: Flash crash. Price drops about 18% in two minutes, liquidations spike and the alert bar turns red.' },
+            { minute: 6,  page: 'page-ops',       text: 'T+06: Three founders, three roles: Engineering, Trading Ops, Support & Comms. The Ops View shows who is doing what while the support queue climbs.' },
+            { minute: 10, page: 'page-updates',   text: 'T+10: First public acknowledgment. Facts only, no guess about the cause, and a promised time for the next update. From here a short update goes out every 5 minutes.' },
             {
                 minute: 12, page: 'page-dashboard',
                 text: {
-                    market: 'T+12: Cross-referencing reveals standard macro dump. Internal prices held integrity.',
-                    fault:  'T+12: System flags severe deviation. Mark price collapsed below index. We own this.'
+                    market: 'T+12: Cause check. Other venues fell as much as we did and our mark price stayed within 1% of the index: a market-wide move, so liquidations stand.',
+                    fault:  'T+12: Cause check. The market did crash, but our mark price drifted about 8% below the index. Our own pricing made it worse. That decides who is compensated.'
                 }
             },
-            { minute: 16, page: 'page-timeline',  text: 'T+16: Containment locks visualized. Every node action timestamped.' },
+            { minute: 16, page: 'page-timeline',  text: 'T+16: Containment. Reduce-only mode, evidence preserved, markets reopened in stages. Every action has an owner.' },
             {
                 minute: 25, page: 'page-updates',
                 text: {
-                    market: 'T+25: Cause broadcasted: Macro movement. Zero internal fault.',
-                    fault:  'T+25: We publicly own the pricing fracture. No promises until math is verified.'
+                    market: 'T+25: We publish the cause (a market-wide move) and say what we do not yet know.',
+                    fault:  'T+25: We publish our pricing fault without promising amounts before the audit is done.'
                 }
             },
-            { minute: 30, page: 'page-report',   text: 'T+30: Client submits payload. Simulating auto-fill...', action: 'fileDemo' },
+            { minute: 30, page: 'page-report',   text: 'T+30: A liquidated user files a report (auto-filled demo case).', action: 'fileDemo' },
             {
                 minute: 33, page: 'page-track',
                 text: {
-                    market: 'Verification confirms market reality. Liquidation holds.',
-                    fault:  'Algorithm confirms liability. Compensation math generated dynamically.'
+                    market: 'Same user, same trade: the liquidation stands, with a plain-language reason.',
+                    fault:  'Same user, same trade: compensation is calculated openly, capped, and paid from the insurance fund.'
                 },
                 action: 'trackDemo'
             },
             {
                 minute: 40, page: 'page-updates',
                 text: {
-                    market: 'T+40: Policy locked globally.',
-                    fault:  'T+40: Formula broadcasted globally before money moves.'
+                    market: 'T+40: The review policy is published before any decisions.',
+                    fault:  'T+40: The compensation formula is published before any payouts.'
                 }
             },
-            { minute: 45, page: 'page-ops',       text: 'T+45: Treasury drawdown visualized. Core nodes handled volume efficiently.' },
-            { minute: 60, page: 'page-dashboard', text: 'T+60: Terminal state reached. Logging out.', action: 'showReplay' },
+            { minute: 45, page: 'page-ops',       text: 'T+45: Ops View. Queue under control and the insurance fund draw is visible and capped. Three people coped thanks to templates, a status page and automation.' },
+            { minute: 60, page: 'page-dashboard', text: 'T+60: Incident contained. Post-mortem due in 48-72 hours.', action: 'showReplay' },
         ];
 
-        const goTo = (pageId) => {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(t => {
+        /* ── NAVIGATION ─────────────────────────────────────────────────────── */
+        function goTo(pageId) {
+            document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
+            document.querySelectorAll('.nav-tab').forEach(function (t) {
                 t.classList.remove('active');
                 t.setAttribute('aria-selected', 'false');
             });
             document.getElementById(pageId).classList.add('active');
-            const tab = document.querySelector(`[data-page="${pageId}"]`);
+            var tab = document.querySelector('[data-page="' + pageId + '"]');
             if (tab) { tab.classList.add('active'); tab.setAttribute('aria-selected', 'true'); }
-            if (pageId === 'page-help') updateHelpETA();
-        };
+            if (pageId === 'page-help') { updateHelpETA(); }
+        }
 
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
                 goTo(tab.dataset.page);
-                if (state.tourOn) state.tourAutoNav = false;
+                // User manually clicked -- stop auto-navigation but keep tour captions running
+                if (state.tourOn) { state.tourAutoNav = false; }
             });
         });
 
-        document.getElementById('btn-start').addEventListener('click', () => startSim());
-        document.getElementById('btn-pause').addEventListener('click', () => togglePause());
-        document.getElementById('btn-reset').addEventListener('click', () => resetSim());
+        /* ── SIMULATION CONTROLS ────────────────────────────────────────────── */
+        document.getElementById('btn-start').addEventListener('click', startSim);
+        document.getElementById('btn-pause').addEventListener('click', togglePause);
+        document.getElementById('btn-reset').addEventListener('click', resetSim);
 
-        document.getElementById('speed-select').addEventListener('change', (e) => {
+        document.getElementById('speed-select').addEventListener('change', function (e) {
             state.speedMult = parseInt(e.target.value);
         });
 
-        document.getElementById('scenario-select').addEventListener('change', (e) => {
+        // Scenario selector: rebuild FAQ immediately so answers change on the fly
+        document.getElementById('scenario-select').addEventListener('change', function (e) {
             state.scenario = e.target.value;
             buildFAQ();
         });
 
-        document.getElementById('btn-tour').addEventListener('click', () => startTour());
-        document.getElementById('btn-tour-replay').addEventListener('click', () => replayTourOtherScenario());
+        // Guided Tour button
+        document.getElementById('btn-tour').addEventListener('click', startTour);
+        document.getElementById('btn-tour-replay').addEventListener('click', replayTourOtherScenario);
 
-        const startSim = () => {
+        function startSim() {
             resetStateOnly();
             state.running = true;
             state.speedMult = parseInt(document.getElementById('speed-select').value);
@@ -1056,12 +1115,13 @@
             document.getElementById('btn-pause').classList.remove('hidden');
             document.getElementById('btn-reset').classList.remove('hidden');
             document.getElementById('alert-bar').classList.remove('hidden');
+            // Disable scenario selector while running
             document.getElementById('scenario-select').disabled = true;
             document.getElementById('updates-feed').innerHTML = '';
             tickInterval = setInterval(tick, CFG.TICK_MS);
-        };
+        }
 
-        const togglePause = () => {
+        function togglePause() {
             if (state.running) {
                 state.running = false;
                 clearInterval(tickInterval);
@@ -1071,9 +1131,9 @@
                 document.getElementById('btn-pause').textContent = 'Pause';
                 tickInterval = setInterval(tick, CFG.TICK_MS);
             }
-        };
+        }
 
-        const resetSim = () => {
+        function resetSim() {
             clearInterval(tickInterval);
             tickInterval = null;
             resetStateOnly();
@@ -1088,107 +1148,142 @@
             document.getElementById('tour-replay').classList.add('hidden');
             document.body.classList.remove('tour-on');
             document.getElementById('updates-feed').innerHTML =
-                '<div style="color:var(--muted);font-size:0.9rem;padding:40px 0;text-align:center;">Feed empty. Start simulation to generate telemetry.</div>';
+                '<div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center;">No updates yet. Start the simulation to watch the feed populate.</div>';
             renderAll();
-        };
+        }
 
-        const resetStateOnly = () => {
-            const { cases: savedCases, caseCounter: savedCounter, speedMult: savedSpeed, scenario: savedScenario } = state;
+        // Reset sim state but preserve cases, speedMult and scenario across resets
+        function resetStateOnly() {
+            var savedCases    = state.cases;
+            var savedCounter  = state.caseCounter;
+            var savedSpeed    = state.speedMult;
+            var savedScenario = state.scenario;
             state = {
-                running: false, simMinute: 0, tickCount: 0, priceHistory: [],
-                liqCount: 0, liqVol: 0, openPos: 12847, insuranceFund: CFG.INSURANCE_START,
-                compensationPaid: 0, markGapPct: 0, currentPhase: 0, updatesShown: [],
-                lastAlertLevel: -1, ticketsOpen: 0, ticketsResolved: 0, slaBreaches: 0,
-                queueHistory: [], cases: savedCases, caseCounter: savedCounter,
-                speedMult: savedSpeed, scenario: savedScenario,
-                tourOn: false, tourAutoNav: true, tourShown: [],
+                running: false,
+                simMinute: 0,
+                tickCount: 0,
+                priceHistory: [],
+                liqCount: 0,
+                liqVol: 0,
+                openPos: 12847,
+                insuranceFund: CFG.INSURANCE_START,
+                compensationPaid: 0,
+                markGapPct: 0,
+                currentPhase: 0,
+                updatesShown: [],
+                lastAlertLevel: -1,
+                ticketsOpen: 0,
+                ticketsResolved: 0,
+                slaBreaches: 0,
+                queueHistory: [],
+                cases: savedCases,
+                caseCounter: savedCounter,
+                speedMult: savedSpeed,
+                scenario: savedScenario,  // preserved across resets
+                tourOn: false,            // tour always resets to off
+                tourAutoNav: true,
+                tourShown: [],
             };
-        };
+        }
 
-        const tick = () => {
+        /* ── MAIN TICK ──────────────────────────────────────────────────────── */
+        function tick() {
             if (!state.running) return;
 
-            const simDelta = (state.speedMult * CFG.TICK_MS) / 60000;
+            // Each real TICK_MS advances sim time by (speedMult * TICK_MS / 60000) sim-minutes
+            var simDelta = (state.speedMult * CFG.TICK_MS) / 60000;
             state.simMinute = Math.min(CFG.INCIDENT_MINUTES, state.simMinute + simDelta);
             state.tickCount++;
 
-            const t = state.simMinute;
-            const indexP = getIndexPrice(t);
-            const markP = getMarkPrice(t, indexP);
+            var t      = state.simMinute;
+            var indexP = getIndexPrice(t);
+            var markP  = getMarkPrice(t, indexP);
 
+            // Gap is negative when mark < index (mark dips below during crash -- Fix 0)
             state.markGapPct = ((markP - indexP) / indexP) * 100;
 
+            // Sample price for the chart every ~3 ticks
             if (state.tickCount % 3 === 0) {
-                state.priceHistory.push({ indexP, markP, t });
-                if (state.priceHistory.length > 400) state.priceHistory.shift();
+                state.priceHistory.push({ indexP: indexP, markP: markP, t: t });
+                if (state.priceHistory.length > 400) { state.priceHistory.shift(); }
             }
 
+            // Liquidation counters -- spike sharply during crash, taper after
             if (t >= CFG.CRASH_MINUTE && t < CFG.REBOUND_START_MIN) {
-                const spike = t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN ? 18 : 4;
-                const newLiqs = Math.floor(Math.random() * spike);
+                var spike = t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN ? 18 : 4;
+                var newLiqs = Math.floor(Math.random() * spike);
                 state.liqCount += newLiqs;
-                state.liqVol += newLiqs * (indexP * (0.04 + Math.random() * 0.28));
-                state.openPos -= Math.floor(newLiqs * 0.8);
-                if (state.openPos < 9000) state.openPos = 9000;
+                state.liqVol   += newLiqs * (indexP * (0.04 + Math.random() * 0.28));
+                state.openPos  -= Math.floor(newLiqs * 0.8);
+                if (state.openPos < 9000) { state.openPos = 9000; }
             } else if (t >= CFG.REBOUND_START_MIN && state.openPos < 12847) {
                 state.openPos += Math.floor(Math.random() * 4);
             }
 
+            // Ticket queue rises on crash, slowly resolves afterward
             if (t > CFG.CRASH_MINUTE) {
-                const inflow = t < 20 ? Math.floor(Math.random() * 10) : t < 35 ? Math.floor(Math.random() * 4) : Math.floor(Math.random() * 2);
-                const outflow = Math.floor(Math.random() * 3);
-                state.ticketsOpen += inflow;
+                var inflow  = t < 20 ? Math.floor(Math.random() * 10) : t < 35 ? Math.floor(Math.random() * 4) : Math.floor(Math.random() * 2);
+                var outflow = Math.floor(Math.random() * 3);
+                state.ticketsOpen    += inflow;
                 state.ticketsResolved += Math.min(outflow, state.ticketsOpen);
-                state.ticketsOpen -= Math.min(outflow, state.ticketsOpen);
-                if (t > 22 && Math.random() < 0.008) state.slaBreaches++;
+                state.ticketsOpen    -= Math.min(outflow, state.ticketsOpen);
+                if (t > 22 && Math.random() < 0.008) { state.slaBreaches++; }
                 state.queueHistory.push(state.ticketsOpen);
-                if (state.queueHistory.length > 60) state.queueHistory.shift();
+                if (state.queueHistory.length > 60) { state.queueHistory.shift(); }
             }
 
-            UPDATES.forEach((u, i) => {
+            // Trigger status updates at their scheduled minute
+            UPDATES.forEach(function (u, i) {
                 if (state.updatesShown.indexOf(i) === -1 && t >= u.minute) {
                     state.updatesShown.push(i);
                     prependUpdate(u);
                 }
             });
 
+            // Determine current phase
             state.currentPhase = 0;
-            for (let i = 0; i < PHASES.length; i++) {
-                if (t >= PHASES[i].startMin) state.currentPhase = i;
+            for (var i = 0; i < PHASES.length; i++) {
+                if (t >= PHASES[i].startMin) { state.currentPhase = i; }
             }
 
+            // Alert bar transitions -- scenario-aware for stabilizing and recovery messages
             if (t >= CFG.CRASH_MINUTE && t < CFG.REBOUND_START_MIN && state.lastAlertLevel !== 1) {
-                setAlertBar('red', 'Volatility limits breached. Reduce-Only lock applied.');
+                setAlertBar('red', 'Flash crash in progress on BTC-PERP. Mark price circuit-breaker engaged. Reduce-Only mode active.');
                 state.lastAlertLevel = 1;
             } else if (t >= CFG.REBOUND_START_MIN && t < 45 && state.lastAlertLevel !== 2) {
-                const amber2 = state.scenario === 'market'
-                    ? 'Vectors stabilizing. Standard ops restored. Manual verifications open.'
-                    : 'Vectors stabilizing. Standard ops restored. Audit sequence running.';
+                var amber2 = state.scenario === 'market'
+                    ? 'BTC-PERP stabilizing. Normal trading resumed. Case reviews underway.'
+                    : 'BTC-PERP stabilizing. Normal trading resumed. Compensation eligibility audit underway.';
                 setAlertBar('amber', amber2);
                 state.lastAlertLevel = 2;
             } else if (t >= 45 && state.lastAlertLevel !== 3) {
-                const green3 = state.scenario === 'market'
-                    ? 'Nominal status. Validations complete. Stand by for post-mortem.'
-                    : 'Nominal status. Liquidity disbursed. Stand by for post-mortem.';
+                var green3 = state.scenario === 'market'
+                    ? 'BTC-PERP trading normally. All cases reviewed. Liquidations stand. Post-mortem in 48-72h.'
+                    : 'BTC-PERP trading normally. Compensation credits are being applied. Post-mortem in 48-72h.';
                 setAlertBar('green', green3);
                 state.lastAlertLevel = 3;
             }
 
+            // Guided tour step trigger (Feature 3c)
             if (state.tourOn) {
-                TOUR.forEach((step, i) => {
+                TOUR.forEach(function (step, i) {
                     if (state.tourShown.indexOf(i) === -1 && t >= step.minute) {
                         state.tourShown.push(i);
-                        const caption = typeof step.text === 'object' ? step.text[state.scenario] : step.text;
+                        // Resolve scenario-variant text
+                        var caption = typeof step.text === 'object' ? step.text[state.scenario] : step.text;
                         document.getElementById('tour-caption').textContent = caption;
-                        document.getElementById('tour-step').textContent = `Seq ${i + 1}/${TOUR.length}`;
-                        if (state.tourAutoNav) goTo(step.page);
-                        if (step.action === 'fileDemo') runFileDemoAction();
-                        if (step.action === 'trackDemo') runTrackDemoAction();
-                        if (step.action === 'showReplay') document.getElementById('tour-replay').classList.remove('hidden');
+                        document.getElementById('tour-step').textContent = 'Step ' + (i + 1) + ' / ' + TOUR.length;
+                        // Auto-navigate unless user has manually clicked a tab
+                        if (state.tourAutoNav) { goTo(step.page); }
+                        // Run any optional action for this step
+                        if (step.action === 'fileDemo')   { runFileDemoAction(); }
+                        if (step.action === 'trackDemo')  { runTrackDemoAction(); }
+                        if (step.action === 'showReplay') { document.getElementById('tour-replay').classList.remove('hidden'); }
                     }
                 });
             }
 
+            // Stop when incident window ends
             if (t >= CFG.INCIDENT_MINUTES) {
                 state.running = false;
                 clearInterval(tickInterval);
@@ -1198,47 +1293,55 @@
             }
 
             renderAll();
-        };
+        }
 
-        const renderAll = () => {
+        /* ── RENDER ─────────────────────────────────────────────────────────── */
+        function renderAll() {
             renderClock();
             renderMarketChip();
             renderStats();
             renderChart();
             renderTimeline();
             renderOps();
-            renderVerdict();
-        };
+            renderVerdict();  // Feature 1c
+        }
 
-        const renderClock = () => {
-            const t = state.simMinute;
-            const mm = pad(Math.floor(t));
-            const ss = pad(Math.floor((t % 1) * 60));
-            document.getElementById('clock-display').textContent = `T+${mm}:${ss}`;
-        };
+        function renderClock() {
+            var t  = state.simMinute;
+            var mm = pad(Math.floor(t));
+            var ss = pad(Math.floor((t % 1) * 60));
+            document.getElementById('clock-display').textContent = 'T+' + mm + ':' + ss;
+        }
 
-        const pad = n => n < 10 ? `0${n}` : `${n}`;
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
-        const renderMarketChip = () => {
-            const chip = document.getElementById('market-status-chip');
-            const t = state.simMinute;
-            let label, cls;
-            if (t < CFG.CRASH_MINUTE) { label = 'NOMINAL'; cls = 'chip-green pulse'; }
-            else if (t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) { label = 'FRACTURED'; cls = 'chip-red'; }
-            else if (t < 22) { label = 'LOCKED'; cls = 'chip-amber'; }
-            else if (t < 45) { label = 'RECOVERING'; cls = 'chip-blue'; }
-            else { label = 'NOMINAL'; cls = 'chip-green'; }
+        function renderMarketChip() {
+            var chip = document.getElementById('market-status-chip');
+            var t = state.simMinute;
+            var label, cls;
+            if (t < CFG.CRASH_MINUTE) {
+                label = 'NORMAL'; cls = 'chip-green';
+            } else if (t < CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) {
+                label = 'VOLATILE'; cls = 'chip-red';
+            } else if (t < 22) {
+                label = 'REDUCE-ONLY'; cls = 'chip-amber';
+            } else if (t < 45) {
+                label = 'RECOVERING'; cls = 'chip-blue';
+            } else {
+                label = 'NORMAL'; cls = 'chip-green';
+            }
             chip.textContent = label;
-            chip.className = `chip ${cls}`;
-        };
+            chip.className = 'chip ' + cls;
+        }
 
-        const renderStats = () => {
+        function renderStats() {
             document.getElementById('stat-liq-count').textContent = state.liqCount.toLocaleString();
-            document.getElementById('stat-liq-vol').textContent = `₹${fmtNum(state.liqVol)}`;
-            document.getElementById('stat-insurance').textContent = `₹${fmtNum(state.insuranceFund)}`;
-            document.getElementById('stat-open-pos').textContent = state.openPos.toLocaleString();
+            document.getElementById('stat-liq-vol').textContent   = '₹' + fmtNum(state.liqVol);
+            document.getElementById('stat-insurance').textContent = '₹' + fmtNum(state.insuranceFund);
+            document.getElementById('stat-open-pos').textContent  = state.openPos.toLocaleString();
 
-            const absGap = Math.abs(state.markGapPct);
+            // Gap warning banner
+            var absGap = Math.abs(state.markGapPct);
             if (absGap > CFG.GAP_THRESHOLD_PCT) {
                 document.getElementById('gap-pct').textContent = absGap.toFixed(1);
                 document.getElementById('gap-banner').classList.remove('hidden');
@@ -1246,300 +1349,312 @@
                 document.getElementById('gap-banner').classList.add('hidden');
             }
 
-            const ph = PHASES[state.currentPhase];
+            // Phase summary box
+            var ph = PHASES[state.currentPhase];
             document.getElementById('phase-name').textContent = ph.name;
             document.getElementById('phase-desc').textContent = ph.desc;
-            const phChip = document.getElementById('phase-chip');
-            phChip.textContent = `Seq ${state.currentPhase + 1}`;
-            const chipCls = ['chip-green', 'chip-red', 'chip-amber', 'chip-blue', 'chip-green'][state.currentPhase];
-            phChip.className = `chip ${chipCls}`;
-        };
+            var phChip = document.getElementById('phase-chip');
+            phChip.textContent = 'Phase ' + (state.currentPhase + 1);
+            var chipCls = ['chip-green', 'chip-red', 'chip-amber', 'chip-blue', 'chip-green'][state.currentPhase];
+            phChip.className = 'chip ' + chipCls;
+        }
 
-        const renderVerdict = () => {
-            const t = state.simMinute;
-            const indexP = getIndexPrice(t);
-            const movePct = ((indexP - CFG.BASE_PRICE) / CFG.BASE_PRICE * 100).toFixed(1);
-            
-            document.getElementById('vd-market-move').textContent = `${movePct}%`;
-            
-            const absGap = Math.abs(state.markGapPct);
-            const gapEl = document.getElementById('vd-gap');
-            gapEl.textContent = `${absGap.toFixed(1)}%`;
+        /* ── CAUSE VERIFICATION CARD (Feature 1c) ──────────────────────────── */
+        function renderVerdict() {
+            var t      = state.simMinute;
+            var indexP = getIndexPrice(t);
+
+            // Row 1: market move as % of pre-crash base price
+            var movePct = ((indexP - CFG.BASE_PRICE) / CFG.BASE_PRICE * 100).toFixed(1);
+            document.getElementById('vd-market-move').textContent = movePct + '%';
+
+            // Row 2: absolute mark-index gap, coloured by threshold
+            var absGap = Math.abs(state.markGapPct);
+            var gapEl  = document.getElementById('vd-gap');
+            gapEl.textContent = absGap.toFixed(1) + '%';
             gapEl.style.color = absGap > CFG.GAP_THRESHOLD_PCT ? 'var(--red)' : 'var(--green)';
 
-            const verdEl = document.getElementById('vd-verdict');
+            // Row 3: verdict -- amber until VERDICT_MINUTE, then scenario verdict
+            var verdEl = document.getElementById('vd-verdict');
             if (t < CFG.VERDICT_MINUTE) {
-                verdEl.textContent = 'Awaiting Telemetry...';
-                verdEl.className = 'chip chip-amber';
+                verdEl.textContent = 'Investigating...';
+                verdEl.className   = 'chip chip-amber';
             } else {
                 verdEl.textContent = sc().verdict;
-                verdEl.className = state.scenario === 'market' ? 'chip chip-green' : 'chip chip-red';
+                verdEl.className   = state.scenario === 'market' ? 'chip chip-green' : 'chip chip-red';
             }
-        };
+        }
 
-        const renderChart = () => {
-            const canvas = document.getElementById('market-canvas');
-            const ctx = canvas.getContext('2d');
-            const W = canvas.clientWidth || 600;
-            const H = 260;
-            canvas.width = W;
+        /* ── CANVAS CHART ───────────────────────────────────────────────────── */
+        function renderChart() {
+            var canvas = document.getElementById('market-canvas');
+            var ctx    = canvas.getContext('2d');
+            var W = canvas.clientWidth || 600;
+            var H = 220;
+            canvas.width  = W;
             canvas.height = H;
             ctx.clearRect(0, 0, W, H);
 
-            const pts = state.priceHistory;
+            var pts = state.priceHistory;
             if (pts.length < 2) {
-                ctx.fillStyle = '#8b92a5';
-                ctx.font = '14px Inter, system-ui';
-                ctx.textAlign = 'center';
-                ctx.fillText('Awaiting live data streams...', W / 2, H / 2);
+                ctx.fillStyle = '#272b38';
+                ctx.font = '13px Inter, system-ui';
+                ctx.fillText('Start the simulation to see live price data', W / 2 - 130, H / 2);
                 return;
             }
 
-            ctx.textAlign = 'left';
-            const allP = pts.flatMap(p => [p.indexP, p.markP]);
-            const minP = Math.min(...allP) - 800;
-            const maxP = Math.max(...allP) + 800;
-            const range = maxP - minP;
-            const padL = 70, padR = 20, padT = 20, padB = 30;
-            const cW = W - padL - padR;
-            const cH = H - padT - padB;
+            var allP = [];
+            pts.forEach(function (p) { allP.push(p.indexP); allP.push(p.markP); });
+            var minP  = Math.min.apply(null, allP) - 76000;
+            var maxP  = Math.max.apply(null, allP) + 76000;
+            var range = maxP - minP;
+            var padL  = 76, padR = 16, padT = 10, padB = 28;
+            var cW    = W - padL - padR;
+            var cH    = H - padT - padB;
 
-            const xOf = i => padL + (i / (pts.length - 1)) * cW;
-            const yOf = p => padT + cH - ((p - minP) / range) * cH;
+            function xOf(i) { return padL + (i / (pts.length - 1)) * cW; }
+            function yOf(p) { return padT + cH - ((p - minP) / range) * cH; }
 
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            // Grid lines + price labels
+            ctx.strokeStyle = '#272b38';
             ctx.lineWidth = 1;
-            for (let g = 0; g <= 4; g++) {
-                const gy = padT + g * (cH / 4);
+            for (var g = 0; g <= 4; g++) {
+                var gy = padT + g * (cH / 4);
                 ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
-                const price = maxP - (g / 4) * range;
-                ctx.fillStyle = '#8b92a5';
-                ctx.font = '11px Inter, system-ui';
-                ctx.fillText(`₹${Math.round(price / 100) * 100}`, 5, gy + 4);
+                var price = maxP - (g / 4) * range;
+                ctx.fillStyle = '#7a8099';
+                ctx.font = '10px Inter, system-ui';
+                ctx.fillText('₹' + (Math.round(price / 10000) * 10000).toLocaleString(), 2, gy + 3);
             }
 
-            let crashStart = -1, crashEnd = -1;
-            pts.forEach((p, i) => {
-                if (crashStart === -1 && p.t >= CFG.CRASH_MINUTE) crashStart = i;
-                if (crashEnd === -1 && p.t >= CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) crashEnd = i;
+            // Crash zone shading
+            var crashStart = -1, crashEnd = -1;
+            pts.forEach(function (p, i) {
+                if (crashStart === -1 && p.t >= CFG.CRASH_MINUTE) { crashStart = i; }
+                if (crashEnd   === -1 && p.t >= CFG.CRASH_MINUTE + CFG.CRASH_DURATION_MIN) { crashEnd = i; }
             });
             if (crashStart >= 0 && crashEnd > crashStart) {
-                ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+                ctx.fillStyle = 'rgba(239,68,68,0.06)';
                 ctx.fillRect(xOf(crashStart), padT, xOf(crashEnd) - xOf(crashStart), cH);
             }
 
+            // Index price line (blue, solid)
             ctx.beginPath();
             ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 2.5;
-            pts.forEach((p, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(p.indexP)) : ctx.lineTo(xOf(i), yOf(p.indexP)));
+            ctx.lineWidth = 2;
+            pts.forEach(function (p, i) {
+                if (i === 0) { ctx.moveTo(xOf(i), yOf(p.indexP)); }
+                else         { ctx.lineTo(xOf(i), yOf(p.indexP)); }
+            });
             ctx.stroke();
 
+            // Mark price line (amber, dashed)
             ctx.beginPath();
             ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
-            pts.forEach((p, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(p.markP)) : ctx.lineTo(xOf(i), yOf(p.markP)));
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 4]);
+            pts.forEach(function (p, i) {
+                if (i === 0) { ctx.moveTo(xOf(i), yOf(p.markP)); }
+                else         { ctx.lineTo(xOf(i), yOf(p.markP)); }
+            });
             ctx.stroke();
             ctx.setLineDash([]);
 
-            const last = pts[pts.length - 1];
-            const lx = xOf(pts.length - 1);
-            const ly = yOf(last.indexP);
-            
+            // Current price dot + label
+            var last = pts[pts.length - 1];
+            var lx   = xOf(pts.length - 1);
+            var ly   = yOf(last.indexP);
             ctx.beginPath();
-            ctx.arc(lx, ly, 5, 0, Math.PI * 2);
+            ctx.arc(lx, ly, 4, 0, Math.PI * 2);
             ctx.fillStyle = '#3b82f6';
             ctx.fill();
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#3b82f6';
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            var labelX = Math.min(lx + 6, W - 100);
+            ctx.fillStyle = '#e2e6f0';
+            ctx.font = 'bold 11px Inter, system-ui';
+            ctx.fillText('₹' + Math.round(last.indexP).toLocaleString(), labelX, ly - 6);
+        }
 
-            const labelX = Math.min(lx + 8, W - 90);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 12px Inter, system-ui';
-            ctx.fillText(`₹${Math.round(last.indexP).toLocaleString()}`, labelX, ly - 8);
-        };
-
-        const renderTimeline = () => {
-            const container = document.getElementById('timeline-container');
-            const t = state.simMinute;
-            container.innerHTML = PHASES.map(ph => {
-                const isDone = t >= ph.endMin;
-                const isActive = t >= ph.startMin && t < ph.endMin;
-                const cls = isDone ? 'done-phase' : isActive ? 'active-phase' : '';
-                const statusChip = isDone
-                    ? '<span class="chip chip-green" style="font-size:0.65rem;">Sealed</span>'
+        /* ── TIMELINE ───────────────────────────────────────────────────────── */
+        function renderTimeline() {
+            var container = document.getElementById('timeline-container');
+            var t = state.simMinute;
+            container.innerHTML = PHASES.map(function (ph) {
+                var isDone   = t >= ph.endMin;
+                var isActive = t >= ph.startMin && t < ph.endMin;
+                var cls = isDone ? 'done-phase' : isActive ? 'active-phase' : '';
+                var statusChip = isDone
+                    ? '<span class="chip chip-green" style="font-size:.65rem;">Complete</span>'
                     : isActive
-                        ? '<span class="chip chip-blue pulse" style="font-size:0.65rem;">Active Node</span>'
+                        ? '<span class="chip chip-blue" style="font-size:.65rem;">Active</span>'
                         : '';
-                const actions = ph.actions.map(a => {
-                    const done = t >= a.doneAt;
-                    return `<li class="${done ? 'done' : ''}">
-                                <span class="owner">${a.owner}</span>
-                                <span>${done ? '✓' : '○'}</span>
-                                ${a.text}
-                            </li>`;
+                var actions = ph.actions.map(function (a) {
+                    var done = t >= a.doneAt;
+                    return '<li class="' + (done ? 'done' : '') + '">'
+                        + '<span class="owner">' + a.owner + '</span>'
+                        + (done ? '[x] ' : '[ ] ')
+                        + a.text + '</li>';
                 }).join('');
-                
-                return `<div class="phase ${cls}">
-                            <div class="row" style="gap:12px;">
-                                <div class="phase-title">${ph.name}</div>
-                                <div class="phase-time">${ph.time}</div>
-                                ${statusChip}
-                            </div>
-                            <div style="font-size:0.85rem;color:var(--muted);margin:8px 0 12px;">${ph.desc}</div>
-                            <ul class="phase-actions">${actions}</ul>
-                        </div>`;
+                return '<div class="phase ' + cls + '">'
+                    + '<div class="row" style="gap:8px;">'
+                    + '<div class="phase-title">' + ph.name + '</div>'
+                    + '<div class="phase-time">' + ph.time + '</div>'
+                    + statusChip + '</div>'
+                    + '<div style="font-size:.82rem;color:var(--muted);margin-top:4px;">' + ph.desc + '</div>'
+                    + '<ul class="phase-actions">' + actions + '</ul></div>';
             }).join('');
-        };
+        }
 
-        const prependUpdate = (u) => {
-            const feed = document.getElementById('updates-feed');
-            if (feed.querySelector('div[style*="text-align:center"]')) feed.innerHTML = '';
-            const mm = pad(Math.floor(u.minute));
-            const col = { red: 'var(--red)', amber: 'var(--amber)', green: 'var(--green)' }[u.sev];
-            const title = typeof u.title === 'object' ? u.title[state.scenario] : u.title;
-            const msg = typeof u.msg === 'object' ? u.msg[state.scenario] : u.msg;
-            
-            const item = document.createElement('div');
+        /* ── UPDATES FEED ───────────────────────────────────────────────────── */
+        // Resolves scenario-variant title/msg before rendering
+        function prependUpdate(u) {
+            var feed = document.getElementById('updates-feed');
+            if (feed.querySelector('div[style*="text-align:center"]')) { feed.innerHTML = ''; }
+            var mm    = pad(Math.floor(u.minute));
+            var col   = { red: 'var(--red)', amber: 'var(--amber)', green: 'var(--green)' }[u.sev];
+            var title = typeof u.title === 'object' ? u.title[state.scenario] : u.title;
+            var msg   = typeof u.msg   === 'object' ? u.msg[state.scenario]   : u.msg;
+            var item  = document.createElement('div');
             item.className = 'update-item';
-            item.innerHTML = `<div class="update-ts" style="color:${col}; border-color: ${col};">T+${mm}:00</div>
-                              <div style="font-weight:800; font-size:1.1rem; margin-top:4px; color:${col};">${title}</div>
-                              <div class="update-msg">${msg}</div>`;
+            item.innerHTML = '<div class="update-ts" style="color:' + col + ';">T+' + mm + ':00</div>'
+                + '<div style="font-weight:700;margin-top:4px;color:' + col + ';">' + title + '</div>'
+                + '<div class="update-msg">' + msg + '</div>';
             feed.insertBefore(item, feed.firstChild);
-        };
+        }
 
-        const renderOps = () => {
-            const t = state.simMinute;
-            document.getElementById('ops-tickets-open').textContent = state.ticketsOpen.toLocaleString();
-            document.getElementById('ops-tickets-resolved').textContent = state.ticketsResolved.toLocaleString();
-            document.getElementById('ops-sla').textContent = state.slaBreaches;
-            
-            const avgMin = state.ticketsResolved > 0 ? Math.round((t * 1.5) / (state.ticketsResolved + 1)) : 0;
-            document.getElementById('ops-avg-response').textContent = avgMin > 0 ? `${avgMin}m` : '--';
+        /* ── OPS VIEW ───────────────────────────────────────────────────────── */
+        function renderOps() {
+            var t = state.simMinute;
+            document.getElementById('ops-tickets-open').textContent     = state.ticketsOpen.toLocaleString();
+            document.getElementById('ops-tickets-resolved').textContent  = state.ticketsResolved.toLocaleString();
+            document.getElementById('ops-sla').textContent              = state.slaBreaches;
+            var avgMin = state.ticketsResolved > 0 ? Math.round((t * 1.5) / (state.ticketsResolved + 1)) : 0;
+            document.getElementById('ops-avg-response').textContent     = avgMin > 0 ? avgMin + 'm' : '--';
 
-            document.getElementById('ops-comp-approved').textContent = `₹${fmtNumFull(state.compensationPaid)}`;
-            document.getElementById('ops-fund-current').textContent = `₹${fmtNumFull(state.insuranceFund)}`;
-            const pct = (state.insuranceFund / CFG.INSURANCE_START) * 100;
-            const bar = document.getElementById('ops-fund-bar');
-            bar.style.width = `${pct.toFixed(1)}%`;
-            bar.style.background = pct > 80 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
-            document.getElementById('ops-fund-pct').textContent = `${pct.toFixed(1)}% Reserves`;
+            // Insurance fund
+            document.getElementById('ops-comp-approved').textContent = '₹' + fmtNumFull(state.compensationPaid);
+            document.getElementById('ops-fund-current').textContent  = '₹' + fmtNumFull(state.insuranceFund);
+            var pct = (state.insuranceFund / CFG.INSURANCE_START) * 100;
+            document.getElementById('ops-fund-bar').style.width      = pct.toFixed(1) + '%';
+            document.getElementById('ops-fund-bar').style.background =
+                pct > 80 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+            document.getElementById('ops-fund-pct').textContent = pct.toFixed(1) + '% remaining';
 
-            const teamEl = document.getElementById('team-container');
-            teamEl.innerHTML = TEAM.map(member => {
-                const tasks = TEAM_TASKS[member.taskKey];
-                let cur = tasks[tasks.length - 1];
-                for (let i = 0; i < tasks.length; i++) {
+            // Team tasks
+            var teamEl = document.getElementById('team-container');
+            teamEl.innerHTML = TEAM.map(function (member) {
+                var tasks = TEAM_TASKS[member.taskKey];
+                var cur   = tasks[tasks.length - 1]; // default to last
+                for (var i = 0; i < tasks.length; i++) {
                     if (t < tasks[i].until) { cur = tasks[i]; break; }
                 }
-                return `<div class="team-card">
-                            <div class="team-name">${member.name}</div>
-                            <div class="team-role">${member.role}</div>
-                            <div class="team-task">${cur.task}</div>
-                        </div>`;
+                return '<div class="team-card"><div class="team-name">' + member.name + '</div>'
+                    + '<div class="team-role">' + member.role + '</div>'
+                    + '<div class="team-task">' + cur.task + '</div></div>';
             }).join('');
 
             drawQueueChart();
-        };
+        }
 
-        const drawQueueChart = () => {
-            const canvas = document.getElementById('queue-canvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width, H = canvas.height;
+        function drawQueueChart() {
+            var canvas = document.getElementById('queue-canvas');
+            if (!canvas) { return; }
+            var ctx = canvas.getContext('2d');
+            var W = canvas.width, H = canvas.height;
             ctx.clearRect(0, 0, W, H);
-            const data = state.queueHistory;
-            if (data.length < 2) return;
-            const mx = Math.max(...data);
-            if (mx === 0) return;
+            var data = state.queueHistory;
+            if (data.length < 2) { return; }
+            var mx = Math.max.apply(null, data);
+            if (mx === 0) { return; }
 
             ctx.beginPath();
-            ctx.strokeStyle = '#8b5cf6';
-            ctx.lineWidth = 2.5;
-            data.forEach((v, i) => {
-                const x = (i / (data.length - 1)) * W;
-                const y = H - (v / mx) * (H - 20) - 4;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            data.forEach(function (v, i) {
+                var x = (i / (data.length - 1)) * W;
+                var y = H - (v / mx) * (H - 14) - 4;
+                if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
             });
             ctx.stroke();
             ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
-            
-            const gradient = ctx.createLinearGradient(0, 0, 0, H);
-            gradient.addColorStop(0, 'rgba(139, 92, 246, 0.3)');
-            gradient.addColorStop(1, 'rgba(139, 92, 246, 0.01)');
-            ctx.fillStyle = gradient;
+            ctx.fillStyle = 'rgba(168,85,247,0.09)';
             ctx.fill();
-            
-            ctx.fillStyle = '#8b92a5';
+            ctx.fillStyle = '#7a8099';
             ctx.font = '10px Inter, system-ui';
-            ctx.fillText(`Peak Backlog: ${mx}`, 10, 16);
-        };
+            ctx.fillText('Open tickets over time (peak: ' + mx + ')', 6, 13);
+        }
 
-        const setAlertBar = (type, msg) => {
-            const bar = document.getElementById('alert-bar');
-            bar.className = `alert-bar alert-${type}`;
+        /* ── ALERT BAR ──────────────────────────────────────────────────────── */
+        function setAlertBar(type, msg) {
+            document.getElementById('alert-bar').className  = 'alert-bar alert-' + type;
             document.getElementById('alert-text').textContent = msg;
-        };
+        }
 
-        document.getElementById('report-form').addEventListener('submit', (e) => {
+        /* ── REPORT FORM ────────────────────────────────────────────────────── */
+        document.getElementById('report-form').addEventListener('submit', function (e) {
             e.preventDefault();
-            if (!validateForm()) return;
+            if (!validateForm()) { return; }
 
             state.caseCounter++;
-            const caseId = `MT-${state.caseCounter}`;
-            const liqPrice = parseFloat(document.getElementById('r-liq-price').value);
-            const loss = parseFloat(document.getElementById('r-loss').value);
-            const peakGap = sc().peakGapPct;
+            var caseId   = 'MT-' + state.caseCounter;
+            var liqPrice = parseFloat(document.getElementById('r-liq-price').value);
+            var loss     = parseFloat(document.getElementById('r-loss').value);
+            var peakGap  = sc().peakGapPct;  // use active scenario gap (Feature 1d)
 
-            const crashLow = CFG.BASE_PRICE * (1 - CFG.CRASH_DROP_PCT);
-            const markAtLow = crashLow * (1 - peakGap / 100);
-            const lowerBound = markAtLow * 0.98;
-            const upperBound = crashLow * 1.02;
-            
-            const inBand = liqPrice >= lowerBound && liqPrice <= upperBound;
-            const eligible = (state.scenario === 'fault') && inBand;
+            // Price band: mark prices reached while the gap was above the threshold.
+            var band       = getEligibleBand(peakGap);
+            var lowerBound = band.low;
+            var upperBound = band.high;
+            // Eligible only if scenario is 'fault' AND the liq price is in the affected band
+            var inBand   = liqPrice >= lowerBound && liqPrice <= upperBound;
+            var eligible = (state.scenario === 'fault') && inBand;
 
-            let compAmount = 0;
-            let compNote = '';
+            var compAmount = 0;
+            var compNote   = '';
 
             if (eligible) {
-                const raw = loss * (peakGap - CFG.GAP_THRESHOLD_PCT) / peakGap;
+                var raw = loss * (peakGap - CFG.GAP_THRESHOLD_PCT) / peakGap;
                 compAmount = Math.min(raw, CFG.COMP_CAP);
-                compNote = 'Criteria Met.';
+                compNote = 'Eligible';
             } else if (state.scenario === 'market') {
-                compNote = `System logs verify movement was standard market flux. Mark price held within ${peakGap.toFixed(1)}% of truth (well under 5% anomaly trigger). Liquidation mathematically verified.`;
+                // Scenario A: market-wide, our mark was within threshold
+                compNote = 'Our audit confirmed the move was market-wide. Our mark price stayed within '
+                    + peakGap.toFixed(1) + '% of the index (below the 5% threshold), so your liquidation '
+                    + 'executed at a fair price and stands.';
             } else {
-                compNote = `Liquidation tick (₹${liqPrice.toLocaleString()}) fell outside the anomalous vector bounds (₹${Math.round(lowerBound).toLocaleString()} - ₹${Math.round(upperBound).toLocaleString()}). Price execution was untainted by system error. Execution finalized.`;
+                // Scenario B but liq price outside affected band
+                compNote = 'Your liquidation price (₹' + liqPrice.toLocaleString()
+                    + ') was outside the price band affected by mark-price distortion (approx ₹'
+                    + Math.round(lowerBound).toLocaleString() + ' - ₹' + Math.round(upperBound).toLocaleString()
+                    + '). The mark price did not materially deviate from the index at the moment of your liquidation. This liquidation is valid under standard exchange rules.';
             }
 
-            const emailKey = document.getElementById('r-email').value.trim().toLowerCase();
-            const caseData = {
-                id: caseId,
-                name: document.getElementById('r-name').value.trim(),
-                email: emailKey,
-                side: document.getElementById('r-side').value,
-                leverage: document.getElementById('r-leverage').value,
-                entry: parseFloat(document.getElementById('r-entry').value),
-                liqPrice: liqPrice,
-                liqTime: document.getElementById('r-liq-time').value,
-                loss: loss,
-                eligible: eligible,
-                compAmount: compAmount,
-                compNote: compNote,
-                peakGap: peakGap,
-                scenario: state.scenario,
-                pipeline: 3,
+            // Store case by case ID and email for Track My Case lookup
+            var emailKey = document.getElementById('r-email').value.trim().toLowerCase();
+            var caseData = {
+                id:        caseId,
+                name:      document.getElementById('r-name').value.trim(),
+                email:     emailKey,
+                side:      document.getElementById('r-side').value,
+                leverage:  document.getElementById('r-leverage').value,
+                entry:     parseFloat(document.getElementById('r-entry').value),
+                liqPrice:  liqPrice,
+                liqTime:   document.getElementById('r-liq-time').value,
+                loss:      loss,
+                eligible:  eligible,
+                compAmount:compAmount,
+                compNote:  compNote,
+                peakGap:   peakGap,        // stored so trackCase() uses the right gap
+                scenario:  state.scenario, // scenario at time of filing
+                pipeline:  3,              // auto-advanced to Resolved
             };
-            
-            state.cases[caseId] = caseData;
+            state.cases[caseId]   = caseData;
             state.cases[emailKey] = caseData;
 
+            // Update insurance fund if compensation granted
             if (eligible && compAmount > 0) {
                 state.compensationPaid += compAmount;
-                state.insuranceFund -= compAmount;
-                if (state.insuranceFund < 0) state.insuranceFund = 0;
+                state.insuranceFund    -= compAmount;
+                if (state.insuranceFund < 0) { state.insuranceFund = 0; }
             }
 
             document.getElementById('report-form').classList.add('hidden');
@@ -1548,218 +1663,232 @@
             renderAll();
         });
 
-        document.getElementById('btn-new-report').addEventListener('click', () => {
+        document.getElementById('btn-new-report').addEventListener('click', function () {
             document.getElementById('report-form').classList.remove('hidden');
             document.getElementById('report-success').classList.add('hidden');
             document.getElementById('report-form').reset();
-            document.querySelectorAll('.err-msg').forEach(el => el.textContent = '');
-            document.querySelectorAll('input.err, select.err, textarea.err').forEach(el => el.classList.remove('err'));
+            document.querySelectorAll('.err-msg').forEach(function (el) { el.textContent = ''; });
+            document.querySelectorAll('input.err, select.err, textarea.err').forEach(function (el) {
+                el.classList.remove('err');
+            });
         });
 
-        const validateForm = () => {
-            const fields = [
-                { id: 'r-name', errId: 'err-name', msg: 'Identification required.' },
-                { id: 'r-email', errId: 'err-email', msg: 'Valid network address required.', check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
-                { id: 'r-side', errId: 'err-side', msg: 'Vector empty.' },
-                { id: 'r-leverage', errId: 'err-leverage', msg: 'Multiplier empty.' },
-                { id: 'r-entry', errId: 'err-entry', msg: 'Invalid price.', check: v => parseFloat(v) > 0 },
-                { id: 'r-liq-price', errId: 'err-liq-price', msg: 'Invalid tick.', check: v => parseFloat(v) > 0 },
-                { id: 'r-liq-time', errId: 'err-liq-time', msg: 'Timestamp empty.' },
-                { id: 'r-loss', errId: 'err-loss', msg: 'Deficit metric required.', check: v => parseFloat(v) > 0 },
-                { id: 'r-desc', errId: 'err-desc', msg: 'Context missing.' },
+        function validateForm() {
+            var fields = [
+                { id: 'r-name',      errId: 'err-name',      msg: 'Name is required.' },
+                { id: 'r-email',     errId: 'err-email',      msg: 'Valid email required.', check: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); } },
+                { id: 'r-side',      errId: 'err-side',       msg: 'Select a position side.' },
+                { id: 'r-leverage',  errId: 'err-leverage',   msg: 'Select your leverage.' },
+                { id: 'r-entry',     errId: 'err-entry',      msg: 'Enter a valid entry price.',    check: function (v) { return parseFloat(v) > 0; } },
+                { id: 'r-liq-price', errId: 'err-liq-price',  msg: 'Enter your liquidation price.', check: function (v) { return parseFloat(v) > 0; } },
+                { id: 'r-liq-time',  errId: 'err-liq-time',   msg: 'Enter the liquidation time.' },
+                { id: 'r-loss',      errId: 'err-loss',        msg: 'Enter your estimated loss.',    check: function (v) { return parseFloat(v) > 0; } },
+                { id: 'r-desc',      errId: 'err-desc',        msg: 'Please describe what happened.' },
             ];
-            let valid = true;
-            fields.forEach(f => {
-                const el = document.getElementById(f.id);
-                const err = document.getElementById(f.errId);
-                const val = el.value.trim();
-                const ok = val.length > 0 && (f.check ? f.check(val) : true);
+            var valid = true;
+            fields.forEach(function (f) {
+                var el  = document.getElementById(f.id);
+                var err = document.getElementById(f.errId);
+                var val = el.value.trim();
+                var ok  = val.length > 0 && (f.check ? f.check(val) : true);
                 el.classList.toggle('err', !ok);
                 err.textContent = ok ? '' : f.msg;
-                if (!ok) valid = false;
+                if (!ok) { valid = false; }
             });
             return valid;
-        };
+        }
 
+        /* ── TRACK MY CASE ──────────────────────────────────────────────────── */
         document.getElementById('btn-track').addEventListener('click', trackCase);
-        document.getElementById('track-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') trackCase();
+        document.getElementById('track-input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { trackCase(); }
         });
 
         function trackCase() {
-            const raw = document.getElementById('track-input').value.trim();
-            const upper = raw.toUpperCase();
-            const lower = raw.toLowerCase();
-            const result = document.getElementById('case-result');
+            var raw    = document.getElementById('track-input').value.trim();
+            var upper  = raw.toUpperCase();
+            var lower  = raw.toLowerCase();
+            var result = document.getElementById('case-result');
 
-            const c = state.cases[upper] || state.cases[lower];
+            var c = state.cases[upper] || state.cases[lower];
             if (!c) {
-                result.innerHTML = `<div style="color:#fca5a5;margin-top:16px;font-size:0.9rem;background:rgba(239, 68, 68, 0.1);padding:12px;border-radius:8px;">Zero returns for <strong>${escHtml(raw)}</strong>. Verify coordinates.</div>`;
+                result.innerHTML = '<div style="color:var(--muted);margin-top:14px;font-size:.85rem;">No case found for <strong>' + escHtml(raw) + '</strong>. Check your case ID or email and try again.</div>';
                 return;
             }
 
-            const stages = ['Payload Rx', 'Index Sync', 'Calculus Executed', 'Finalized'];
-            const pipeHtml = stages.map((s, i) => {
-                const cls = i < c.pipeline ? 'done' : i === c.pipeline ? 'active' : '';
-                return `<div class="pipe-step ${cls}">${s}</div>`;
+            var stages   = ['Received', 'Verified Against Index', 'Decision Made', 'Resolved'];
+            var pipeHtml = stages.map(function (s, i) {
+                var cls = i < c.pipeline ? 'done' : i === c.pipeline ? 'active' : '';
+                return '<div class="pipe-step ' + cls + '">' + s + '</div>';
             }).join('');
 
-            let decisionHtml;
+            var decisionHtml;
             if (c.eligible) {
-                const caseGap = c.peakGap || sc().peakGapPct;
-                const raw2 = c.loss * (caseGap - CFG.GAP_THRESHOLD_PCT) / caseGap;
-                decisionHtml = `<div class="comp-box">
-                    <div style="font-weight:800;font-size:1.1rem;color:var(--green);margin-bottom:16px;">Node Eligible for Reserve Draw</div>
-                    <div class="comp-row"><span>Declared Deficit</span><span>₹${c.loss.toLocaleString()}</span></div>
-                    <div class="comp-row"><span>System Anomaly Delta</span><span>${caseGap.toFixed(1)}%</span></div>
-                    <div class="comp-row"><span>Delta exceeding 5% logic</span><span>${(caseGap - CFG.GAP_THRESHOLD_PCT).toFixed(1)} pp</span></div>
-                    <div class="comp-row"><span>Applied Calculus</span><span>Loss × ${(caseGap - CFG.GAP_THRESHOLD_PCT).toFixed(1)} / ${caseGap.toFixed(1)}</span></div>
-                    <div class="comp-row"><span>Computed Baseline</span><span>₹${raw2.toFixed(0)}</span></div>
-                    <div class="comp-row"><span>Hard Cap ₹${CFG.COMP_CAP.toLocaleString()}</span><span>${c.compAmount < raw2 ? 'Applied' : 'Bypassed'}</span></div>
-                    <div class="comp-row"><span style="font-size:1.1rem;"><strong>Final Treasury Injection</strong></span><span><strong style="color:var(--green);font-size:1.2rem;">₹${c.compAmount.toFixed(2)}</strong></span></div>
-                    <div style="margin-top:16px;font-size:0.8rem;color:var(--muted); line-height: 1.5;">Liquidity injected from central reserves. Ledger reflects changes within 24h of sequence completion.</div>
-                </div>`;
+                // Use the gap stored on the case record (Feature 1d)
+                var caseGap = c.peakGap || sc().peakGapPct;
+                var raw2    = c.loss * (caseGap - CFG.GAP_THRESHOLD_PCT) / caseGap;
+                decisionHtml = '<div class="comp-box">'
+                    + '<div style="font-weight:700;color:var(--green);margin-bottom:10px;">Eligible for Compensation</div>'
+                    + '<div class="comp-row"><span>Estimated loss</span><span>₹' + c.loss.toLocaleString() + '</span></div>'
+                    + '<div class="comp-row"><span>Mark-index gap at liquidation</span><span>' + caseGap.toFixed(1) + '%</span></div>'
+                    + '<div class="comp-row"><span>Gap above 5% threshold</span><span>' + (caseGap - CFG.GAP_THRESHOLD_PCT).toFixed(1) + ' pp</span></div>'
+                    + '<div class="comp-row"><span>Formula applied</span><span>Loss x ' + (caseGap - CFG.GAP_THRESHOLD_PCT).toFixed(1) + ' / ' + caseGap.toFixed(1) + '</span></div>'
+                    + '<div class="comp-row"><span>Raw compensation</span><span>₹' + raw2.toFixed(0) + '</span></div>'
+                    + '<div class="comp-row"><span>Cap at ₹' + CFG.COMP_CAP.toLocaleString() + '</span><span>' + (c.compAmount < raw2 ? 'Applied' : 'Not reached') + '</span></div>'
+                    + '<div class="comp-row"><span><strong>Final compensation</strong></span><span><strong style="color:var(--green);">₹' + c.compAmount.toFixed(2) + '</strong></span></div>'
+                    + '<div style="margin-top:10px;font-size:.75rem;color:var(--muted);">Paid from the insurance fund. Credited to your account within 24 hours of incident resolution.</div></div>';
             } else {
-                decisionHtml = `<div class="comp-box deny">
-                    <div style="font-weight:800;font-size:1.1rem;color:var(--amber);margin-bottom:12px;">Market Reality Confirmed - Zero Adjustments</div>
-                    <div style="font-size:0.95rem;color:#e2e6f0;line-height:1.6;margin-bottom:12px;">${escHtml(c.compNote)}</div>
-                    <div style="font-size:0.8rem;color:var(--muted);">Disputes require off-chain cryptographic proofs. Email support directly.</div>
-                </div>`;
+                decisionHtml = '<div class="comp-box deny">'
+                    + '<div style="font-weight:700;color:var(--amber);margin-bottom:10px;">Liquidation Stands -- No Compensation</div>'
+                    + '<div style="font-size:.83rem;color:var(--muted);">' + escHtml(c.compNote) + '</div>'
+                    + '<div style="margin-top:10px;font-size:.75rem;color:var(--muted);">If you believe this is incorrect, reply to your case email with additional evidence. We will re-review within 48 hours.</div></div>';
             }
 
-            result.innerHTML = `<hr class="divider">
-                <div class="row" style="margin-bottom:16px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px;">
-                    <div class="mono" style="font-size:1.3rem;font-weight:800;color:var(--blue);">${c.id}</div>
-                    <div style="color:var(--muted);font-size:0.9rem;border-left: 1px solid var(--border); padding-left: 12px;">Node: ${escHtml(c.name)} <br> ${escHtml(c.email)}</div>
-                </div>
-                <div class="pipeline">${pipeHtml}</div>
-                <div style="margin-bottom:16px;font-size:0.9rem; display:flex; gap: 16px; flex-wrap: wrap; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
-                    <div><span style="color:var(--muted);">Vector: </span><strong>${c.side.toUpperCase()}</strong></div>
-                    <div><span style="color:var(--muted);">Multi: </span><strong>${c.leverage}x</strong></div>
-                    <div><span style="color:var(--muted);">Entry: </span><strong>₹${c.entry.toLocaleString()}</strong></div>
-                    <div><span style="color:var(--muted);">Liquidation: </span><strong>₹${c.liqPrice.toLocaleString()}</strong></div>
-                </div>
-                ${decisionHtml}`;
+            result.innerHTML = '<hr class="divider">'
+                + '<div class="row" style="margin-bottom:8px;">'
+                + '<div style="font-size:1.1rem;font-weight:700;font-family:monospace;">' + c.id + '</div>'
+                + '<div style="color:var(--muted);font-size:.82rem;">Filed by ' + escHtml(c.name) + ' (' + escHtml(c.email) + ')</div></div>'
+                + '<div class="pipeline">' + pipeHtml + '</div>'
+                + '<div style="margin-bottom:10px;font-size:.82rem;">'
+                + '<span style="color:var(--muted);">Side: </span><strong>' + c.side + '</strong> &nbsp;'
+                + '<span style="color:var(--muted);">Leverage: </span><strong>' + c.leverage + 'x</strong> &nbsp;'
+                + '<span style="color:var(--muted);">Entry: </span><strong>₹' + c.entry.toLocaleString() + '</strong> &nbsp;'
+                + '<span style="color:var(--muted);">Liq price: </span><strong>₹' + c.liqPrice.toLocaleString() + '</strong></div>'
+                + decisionHtml;
         }
 
-        const buildFAQ = () => {
-            const container = document.getElementById('faq-container');
-            container.innerHTML = FAQ.map((item, i) => {
-                const answer = typeof item.a === 'object' ? item.a[state.scenario] : item.a;
-                return `<div class="faq-item">
-                            <button class="faq-q" id="faq-q-${i}" aria-expanded="false" aria-controls="faq-a-${i}">
-                                ${item.q}
-                            </button>
-                            <div class="faq-a" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}">
-                                ${answer}
-                            </div>
-                        </div>`;
+        /* ── FAQ ────────────────────────────────────────────────────────────── */
+        // Resolves scenario-variant 'a' fields before rendering
+        function buildFAQ() {
+            var container = document.getElementById('faq-container');
+            container.innerHTML = FAQ.map(function (item, i) {
+                var answer = typeof item.a === 'object' ? item.a[state.scenario] : item.a;
+                return '<div class="faq-item">'
+                    + '<button class="faq-q" id="faq-q-' + i + '" aria-expanded="false" aria-controls="faq-a-' + i + '">'
+                    + item.q + '</button>'
+                    + '<div class="faq-a" id="faq-a-' + i + '" role="region" aria-labelledby="faq-q-' + i + '">' + answer + '</div></div>';
             }).join('');
-            
-            FAQ.forEach((_, i) => {
-                document.getElementById(`faq-q-${i}`).addEventListener('click', () => toggleFAQ(i));
+            FAQ.forEach(function (_, i) {
+                document.getElementById('faq-q-' + i).addEventListener('click', function () {
+                    toggleFAQ(i);
+                });
             });
-        };
+        }
 
-        const toggleFAQ = (i) => {
-            const q = document.getElementById(`faq-q-${i}`);
-            const a = document.getElementById(`faq-a-${i}`);
-            const open = a.classList.contains('visible');
+        function toggleFAQ(i) {
+            var q    = document.getElementById('faq-q-' + i);
+            var a    = document.getElementById('faq-a-' + i);
+            var open = a.classList.contains('visible');
             a.classList.toggle('visible', !open);
             q.classList.toggle('open', !open);
             q.setAttribute('aria-expanded', String(!open));
-        };
+        }
 
-        const updateHelpETA = () => {
-            const t = state.simMinute;
-            let eta, note;
+        function updateHelpETA() {
+            var t = state.simMinute;
+            var eta, note;
             if (t < 20) {
-                eta = 'T+24 Hours';
-                note = 'Chronological batch processing active.';
+                eta  = 'Under 24 hours';
+                note = 'Reviewing all affected accounts in order of submission.';
             } else if (t < 40) {
-                eta = 'T+12 Hours';
-                note = 'Verification running. Eligible nodes prioritized.';
+                eta  = 'Under 12 hours';
+                note = 'Audit in progress. Compensation-eligible cases are processed first.';
             } else {
-                eta = 'T+4 Hours';
-                note = 'Bulk sequences complete. Check tracker for node status.';
+                eta  = 'Under 4 hours';
+                note = 'Most cases are already decided. Check Track My Case for your outcome.';
             }
             document.getElementById('help-response-time').textContent = eta;
             document.getElementById('help-queue').textContent = note;
-        };
+        }
 
-        const startTour = () => {
+        /* ── GUIDED TOUR (Feature 3) ────────────────────────────────────────── */
+
+        // Start the tour: reset, set 20x speed, start sim, mark tour active
+        function startTour() {
             resetSim();
             document.getElementById('scenario-select').value = state.scenario;
-            document.getElementById('speed-select').value = '20';
+            document.getElementById('speed-select').value    = '20';
             state.speedMult = 20;
             startSim();
-            state.tourOn = true;
+            state.tourOn      = true;
             state.tourAutoNav = true;
-            state.tourShown = [];
+            state.tourShown   = [];
             document.getElementById('tour-bar').classList.remove('hidden');
             document.getElementById('tour-replay').classList.add('hidden');
-            document.getElementById('tour-caption').textContent = 'Nominal environment. BTC-PERP stable. Tracking parameters active.';
-            document.getElementById('tour-step').textContent = `Seq 1/${TOUR.length}`;
+            document.getElementById('tour-caption').textContent = 'Normal trading. BTC-PERP near ₹6.46M. Watch the clock, chart and counters.';
+            document.getElementById('tour-step').textContent    = 'Step 1 / ' + TOUR.length;
             document.body.classList.add('tour-on');
-        };
+        }
 
-        const exitTour = () => {
-            state.tourOn = false;
+        // Exit tour: hide bar, stop auto-nav, leave sim running
+        function exitTour() {
+            state.tourOn      = false;
             state.tourAutoNav = false;
             document.getElementById('tour-bar').classList.add('hidden');
             document.getElementById('tour-replay').classList.add('hidden');
             document.body.classList.remove('tour-on');
-        };
+        }
 
-        const replayTourOtherScenario = () => {
-            const other = state.scenario === 'fault' ? 'market' : 'fault';
+        // Replay button: switch to the other scenario and restart the tour
+        function replayTourOtherScenario() {
+            var other = state.scenario === 'fault' ? 'market' : 'fault';
             state.scenario = other;
             document.getElementById('scenario-select').value = other;
             buildFAQ();
             startTour();
-        };
+        }
 
-        const runFileDemoAction = () => {
+        // fileDemo: auto-fill and submit the report form with a pre-set demo case
+        function runFileDemoAction() {
             document.getElementById('btn-new-report').click();
-            document.getElementById('r-name').value = 'Alex Chen';
-            document.getElementById('r-email').value = 'demo@mochatrade.test';
-            document.getElementById('r-side').value = 'long';
-            document.getElementById('r-leverage').value = '10';
-            document.getElementById('r-entry').value = '68000';
-            document.getElementById('r-liq-price').value = '58000';
-            document.getElementById('r-liq-time').value = '09:07';
-            document.getElementById('r-loss').value = '12000';
-            document.getElementById('r-desc').value = 'Terminal position executed during anomaly window.';
+            document.getElementById('r-name').value      = 'Alex Chen';
+            document.getElementById('r-email').value     = 'demo@mochatrade.test';
+            document.getElementById('r-side').value      = 'long';
+            document.getElementById('r-leverage').value  = '10';
+            document.getElementById('r-entry').value     = '6460000';
+            document.getElementById('r-liq-price').value = '5795000'; // 10x long from 6,460,000; inside the affected band for Scenario B
+            document.getElementById('r-liq-time').value  = '09:07';
+            document.getElementById('r-loss').value      = '1140000';
+            document.getElementById('r-desc').value      = 'Liquidated during the crash.';
             document.getElementById('report-form').dispatchEvent(new Event('submit', { cancelable: true }));
-        };
+        }
 
-        const runTrackDemoAction = () => {
+        // trackDemo: populate the track input and look up the demo case
+        function runTrackDemoAction() {
             document.getElementById('track-input').value = 'demo@mochatrade.test';
             trackCase();
-        };
+        }
 
-        const fmtNum = n => {
-            if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-            if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+        /* ── HELPERS ────────────────────────────────────────────────────────── */
+        function fmtNum(n) {
+            if (n >= 1e6) { return (n / 1e6).toFixed(2) + 'M'; }
+            if (n >= 1e3) { return (n / 1e3).toFixed(1) + 'K'; }
             return Math.round(n).toFixed(0);
-        };
+        }
 
-        const fmtNumFull = n => n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        function fmtNumFull(n) {
+            return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
 
-        const escHtml = s => String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+        function escHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
 
+        /* ── INIT ───────────────────────────────────────────────────────────── */
         buildFAQ();
         renderAll();
 
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                if (tab.dataset.page === 'page-help') updateHelpETA();
+        document.querySelectorAll('.nav-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                if (tab.dataset.page === 'page-help') { updateHelpETA(); }
             });
         });
+
     </script>
 </body>
+
 </html>
