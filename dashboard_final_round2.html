@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MochaTrade &mdash; Ops Command Center</title>
+<meta name="description" content="MochaTrade internal ops dashboard for live flash-crash incident response.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080f;--surface:#0d1019;--card:#111522;--card2:#161d2e;--border:#1e2540;--border2:#283260;
+  --text:#e2e8ff;--muted:#5a6a9a;
+  --green:#10d97c;--green-dim:rgba(16,217,124,.15);
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,.15);
+  --red:#ff4560;--red-dim:rgba(255,69,96,.15);
+  --blue:#4f8ef7;--blue-dim:rgba(79,142,247,.15);
+  --purple:#b06cff;--purple-dim:rgba(176,108,255,.15);
+  --cyan:#00d4ff;--cyan-dim:rgba(0,212,255,.15);
+  --teal:#00c9a7;--teal-dim:rgba(0,201,167,.15);
+  --pink:#ff6eb4;--pink-dim:rgba(255,110,180,.15);
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;--r:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* === BANNER & TOP BAR === */
+.sim-banner{background:linear-gradient(90deg,#7c2d12,#4c1d95,#0c4a6e);color:#fde68a;text-align:center;padding:5px 12px;font-size:.72rem;font-weight:700;letter-spacing:.12em}
+.top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.logo{font-weight:800;font-size:1rem;white-space:nowrap}
+.logo .mo{background:linear-gradient(135deg,var(--amber),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo .badge{font-size:.6rem;font-weight:700;background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,96,.4);padding:2px 7px;border-radius:4px;margin-left:6px;vertical-align:middle;letter-spacing:.08em;-webkit-text-fill-color:var(--red)}
+.clock{font-family:var(--mono);font-size:1rem;font-weight:600;color:var(--amber);min-width:82px}
+
+
+/* === CHIPS === */
+.chip{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.63rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.chip-green{background:var(--green-dim);color:var(--green)}.chip-amber{background:var(--amber-dim);color:var(--amber)}
+.chip-red{background:var(--red-dim);color:var(--red)}.chip-blue{background:var(--blue-dim);color:var(--blue)}
+.chip-purple{background:var(--purple-dim);color:var(--purple)}.chip-cyan{background:var(--cyan-dim);color:var(--cyan)}
+.chip-teal{background:var(--teal-dim);color:var(--teal)}.chip-pink{background:var(--pink-dim);color:var(--pink)}
+
+.spacer{flex:1}
+select.ctrl{padding:5px 9px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border2);font-size:.78rem;outline:none}
+.btn{padding:7px 14px;border-radius:7px;border:none;font-size:.78rem;font-weight:600;transition:all .15s}.btn:hover{opacity:.85;transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#7b5ea7);color:#fff}
+.btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border2)}
+.btn-amber{background:linear-gradient(135deg,var(--amber),var(--pink));color:#000}
+.btn-green{background:linear-gradient(135deg,var(--green),var(--teal));color:#000}
+.btn-red{background:linear-gradient(135deg,var(--red),var(--purple));color:#fff}
+.btn-sm{padding:5px 11px;font-size:.72rem}
+
+/* === TABS === */
+.nav-tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto}
+.nav-tab{padding:10px 18px;border:none;background:transparent;color:var(--muted);font-size:.8rem;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;cursor:pointer}
+.nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--text);border-bottom-color:var(--red)}
+.nav-tab.pub-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.page{display:none}.page.active{display:block}
+
+/* === OPS GRID === */
+.ops-grid{display:grid;grid-template-columns:290px 1fr 310px;height:calc(100vh - 94px);gap:0}
+@media(max-width:1200px){.ops-grid{grid-template-columns:250px 1fr 275px}}
+@media(max-width:860px){.ops-grid{grid-template-columns:1fr;height:auto}}
+.panel{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}.panel:last-child{border-right:none}
+.panel-header{background:linear-gradient(180deg,var(--surface) 0%,rgba(13,16,25,.6) 100%);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.panel-title{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.panel-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+
+/* === SIGNAL CARDS === */
+.sig-card{background:linear-gradient(135deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;transition:border-color .3s,box-shadow .3s;position:relative;overflow:hidden}
+.sig-card::before{content:'';position:absolute;inset:0;border-radius:var(--r);opacity:0;transition:opacity .4s;pointer-events:none}
+.sig-card.warn{border-color:rgba(245,166,35,.45);background:linear-gradient(135deg,rgba(245,166,35,.04),rgba(245,166,35,.08))}
+.sig-card.warn::before{background:radial-gradient(ellipse at top,rgba(245,166,35,.08),transparent 70%);opacity:1}
+.sig-card.crit{border-color:rgba(255,69,96,.5);animation:pulseBorder 1.4s ease infinite}
+.sig-card.crit::before{background:radial-gradient(ellipse at top,rgba(255,69,96,.1),transparent 70%);opacity:1}
+@keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(255,69,96,0)}50%{box-shadow:0 0 18px 2px rgba(255,69,96,.25)}}
+.sig-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.sig-value{font-size:1.55rem;font-weight:800;font-family:var(--mono);margin:3px 0;background:linear-gradient(135deg,var(--text),#a0b4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sig-value.crit-val{background:linear-gradient(135deg,var(--red),var(--pink));-webkit-background-clip:text;background-clip:text}
+.sig-sub{font-size:.67rem;color:var(--muted)}
+.sig-bar-wrap{margin-top:8px;height:4px;background:var(--border);border-radius:3px;overflow:hidden}
+.sig-bar{height:100%;border-radius:3px;transition:width .5s}
+.mini-chart{width:100%;height:56px;display:block;border-radius:4px;margin-top:8px}
+.countdown-pill{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 8px;border-radius:12px;font-size:.63rem;font-weight:700;font-family:var(--mono);background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,96,.3);animation:countPulse 1s ease infinite}
+@keyframes countPulse{0%,100%{opacity:1}50%{opacity:.6}}
+.countdown-pill.warn-pill{background:var(--amber-dim);color:var(--amber);border-color:rgba(245,166,35,.3)}
+
+/* === TRIGGER CARDS === */
+.trigger-card{background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:var(--r);padding:12px 14px;transition:all .25s}
+.trigger-card.pending{border-left-color:var(--amber);background:linear-gradient(135deg,rgba(245,166,35,.05),rgba(245,166,35,.02))}
+.trigger-card.crit-trigger{border-left-color:var(--red);background:linear-gradient(135deg,rgba(255,69,96,.07),rgba(176,108,255,.04));animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.trigger-card.dismissed{opacity:.3;pointer-events:none;filter:grayscale(1)}
+.trigger-card.accepted{border-left-color:var(--green);background:linear-gradient(135deg,rgba(16,217,124,.05),rgba(0,201,167,.03))}
+.trig-who{font-size:.59rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px}
+.trig-title{font-size:.88rem;font-weight:700;margin-bottom:4px}
+.trig-why{font-size:.71rem;color:var(--muted);margin-bottom:8px;line-height:1.45}
+.trig-rec{font-size:.69rem;color:var(--cyan);margin-bottom:10px;font-weight:600;padding:5px 8px;background:var(--cyan-dim);border-radius:5px;border-left:2px solid var(--cyan)}
+.trig-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+/* === PLAYBOOK === */
+.playbook-section{background:linear-gradient(135deg,rgba(176,108,255,.06),rgba(79,142,247,.04));border:1px solid rgba(176,108,255,.2);border-radius:var(--r);padding:12px 14px}
+.playbook-title{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--purple);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.playbook-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.playbook-btn{padding:9px 10px;border-radius:7px;border:1px solid;font-size:.71rem;font-weight:700;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.3}
+.pb-blue{background:var(--blue-dim);border-color:rgba(79,142,247,.35);color:var(--blue)}
+.pb-blue:hover:not(:disabled){background:rgba(79,142,247,.25);border-color:var(--blue)}
+.pb-amber{background:var(--amber-dim);border-color:rgba(245,166,35,.35);color:var(--amber)}
+.pb-amber:hover:not(:disabled){background:rgba(245,166,35,.25);border-color:var(--amber)}
+.pb-red{background:var(--red-dim);border-color:rgba(255,69,96,.35);color:var(--red)}
+.pb-red:hover:not(:disabled){background:rgba(255,69,96,.25);border-color:var(--red)}
+.pb-teal{background:var(--teal-dim);border-color:rgba(0,201,167,.35);color:var(--teal)}
+.pb-teal:hover:not(:disabled){background:rgba(0,201,167,.25);border-color:var(--teal)}
+.pb-purple{background:var(--purple-dim);border-color:rgba(176,108,255,.35);color:var(--purple)}
+.pb-purple:hover:not(:disabled){background:rgba(176,108,255,.25);border-color:var(--purple)}
+.playbook-btn:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.8)}
+.playbook-btn.active-action{opacity:1 !important;animation:pbActive 2s ease infinite}
+@keyframes pbActive{0%,100%{box-shadow:none}50%{box-shadow:0 0 10px currentColor}}
+.pb-icon{font-size:1.1rem}
+.pb-label{font-size:.65rem;font-weight:700}
+.pb-status{font-size:.59rem;opacity:.7}
+
+/* === COMMS TEMPLATES === */
+.tmpl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;transition:all .25s;margin-bottom:8px}
+.tmpl-card.recommended{border-color:rgba(245,166,35,.5);background:linear-gradient(135deg,rgba(245,166,35,.07),rgba(255,110,180,.04));animation:glowAmber 2.2s ease infinite}
+@keyframes glowAmber{0%,100%{box-shadow:0 0 0 rgba(245,166,35,0)}50%{box-shadow:0 0 20px rgba(245,166,35,.18)}}
+.tmpl-card.sent{opacity:.4;pointer-events:none;filter:grayscale(.6)}
+.tmpl-tag{font-size:.59rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.tmpl-title{font-size:.85rem;font-weight:700;margin:4px 0}
+.tmpl-preview{font-size:.7rem;color:var(--muted);line-height:1.45;margin-bottom:10px}
+.tmpl-send-btn{width:100%;padding:7px;border-radius:6px;border:none;font-size:.72rem;font-weight:700;background:var(--border2);color:var(--text);cursor:pointer;transition:all .2s}
+.tmpl-send-btn.hot{background:linear-gradient(135deg,var(--amber),var(--pink));color:#000;animation:hotPulse 1.5s ease infinite}
+@keyframes hotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+
+/* === DECISION LOG === */
+.log-entry{background:var(--card);border-left:3px solid var(--border2);border-radius:0 8px 8px 0;padding:8px 11px;font-size:.72rem;animation:logSlide .25s ease;position:relative}
+@keyframes logSlide{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+.log-entry.log-alert{border-left-color:var(--red);background:linear-gradient(135deg,rgba(255,69,96,.07),var(--card))}
+.log-entry.log-comms{border-left-color:var(--blue);background:linear-gradient(135deg,rgba(79,142,247,.07),var(--card))}
+.log-entry.log-action{border-left-color:var(--green);background:linear-gradient(135deg,rgba(16,217,124,.07),var(--card))}
+.log-entry.log-case{border-left-color:var(--purple);background:linear-gradient(135deg,rgba(176,108,255,.07),var(--card))}
+.log-entry.log-decision{border-left-color:var(--amber);background:linear-gradient(135deg,rgba(245,166,35,.07),var(--card))}
+.log-entry.log-correction{border-left-color:var(--teal);background:linear-gradient(135deg,rgba(0,201,167,.07),var(--card));border-left-style:dashed}
+.log-ts{color:var(--muted);font-family:var(--mono);font-size:.63rem}
+.log-body{margin-top:2px;line-height:1.5;color:var(--text)}
+.log-who{font-weight:700;color:var(--cyan)}
+.log-revise-btn{position:absolute;top:6px;right:8px;background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:.6rem;padding:1px 6px;cursor:pointer;opacity:0;transition:opacity .2s}
+.log-entry:hover .log-revise-btn{opacity:1}
+.log-revise-btn:hover{border-color:var(--teal);color:var(--teal)}
+
+/* === ALERT BAR === */
+.alert-bar{padding:8px 16px;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:9px}
+.alert-red{background:linear-gradient(90deg,rgba(255,69,96,.15),rgba(176,108,255,.08));border-bottom:1px solid rgba(255,69,96,.3);color:#fca5a5}
+.alert-green{background:linear-gradient(90deg,rgba(16,217,124,.12),rgba(0,212,255,.06));border-bottom:1px solid rgba(16,217,124,.3);color:#86efac}
+.alert-amber{background:linear-gradient(90deg,rgba(245,166,35,.12),rgba(255,110,180,.06));border-bottom:1px solid rgba(245,166,35,.3);color:#fcd34d}
+.crit-flash{animation:critFlash .5s ease}
+@keyframes critFlash{0%,100%{opacity:1}25%{opacity:.3}75%{opacity:.7}}
+
+/* === PUBLIC PAGE === */
+.pub-wrap{max-width:900px;margin:0 auto;padding:20px}
+.card{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.card-title{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.grid-2{grid-template-columns:1fr}.grid-4{grid-template-columns:1fr 1fr}}
+.stat-box{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat-label{font-size:.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.stat-value{font-size:1.3rem;font-weight:800;font-family:var(--mono);margin-top:4px;background:linear-gradient(135deg,var(--text),#a0b4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.stat-sub{font-size:.65rem;color:var(--muted);margin-top:2px}
+#market-canvas,#pub-canvas{width:100%;height:180px;display:block;border-radius:6px}
+.phase{border-left:2px solid var(--border);padding-left:14px;margin-bottom:16px;position:relative}
+.phase::before{content:'';position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--card)}
+.phase.active-phase{border-left-color:var(--blue)}.phase.active-phase::before{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.phase.done-phase{border-left-color:var(--green)}.phase.done-phase::before{background:var(--green)}
+.phase-title{font-weight:700;font-size:.88rem}.phase-time{font-size:.68rem;color:var(--muted)}
+.phase-actions{margin-top:7px;list-style:none}
+.phase-actions li{font-size:.76rem;color:var(--muted);padding:2px 0;display:flex;gap:7px;align-items:flex-start}
+.phase-actions li.done{color:var(--green)}
+.phase-actions li .owner{font-size:.62rem;background:var(--border);padding:1px 5px;border-radius:3px;white-space:nowrap;color:var(--muted);flex-shrink:0}
+.update-item{border-bottom:1px solid var(--border);padding:10px 0}.update-item:last-child{border-bottom:none}
+.update-ts{font-size:.68rem;color:var(--muted);font-family:var(--mono)}.update-msg{font-size:.82rem;margin-top:3px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+.form-group{display:flex;flex-direction:column;gap:4px}.form-group.full{grid-column:1/-1}
+label{font-size:.72rem;color:var(--muted);font-weight:600}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.82rem;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+input.err,select.err,textarea.err{border-color:var(--red)}
+.err-msg{font-size:.68rem;color:var(--red)}textarea{resize:vertical;min-height:70px}select option{background:var(--card)}
+.pipeline{display:flex;gap:0;margin:14px 0;flex-wrap:wrap}
+.pipe-step{flex:1;min-width:72px;text-align:center;padding:8px 4px;font-size:.68rem;border-top:3px solid var(--border);color:var(--muted)}
+.pipe-step.done{border-top-color:var(--green);color:var(--green)}.pipe-step.active{border-top-color:var(--blue);color:var(--blue)}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-q{width:100%;background:none;border:none;text-align:left;color:var(--text);padding:12px 0;font-size:.87rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.faq-q::after{content:'+';color:var(--muted);font-size:1.1rem}.faq-q.open::after{content:'-'}
+.faq-a{font-size:.8rem;color:var(--muted);padding:0 0 12px;display:none}.faq-a.visible{display:block}
+.comp-box{background:rgba(16,217,124,.07);border:1px solid rgba(16,217,124,.25);border-radius:var(--r);padding:12px;margin-top:10px}
+.comp-box.deny{background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.3)}
+.comp-row{display:flex;justify-content:space-between;font-size:.78rem;padding:3px 0;border-bottom:1px solid var(--border)}.comp-row:last-child{border:none;font-weight:700}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gap-banner{background:var(--red-dim);border:1px solid rgba(255,69,96,.3);border-radius:5px;padding:5px 11px;font-size:.72rem;color:var(--red);margin-top:7px}
+#verdict-card .vd-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+#verdict-card .vd-label{font-size:.78rem;min-width:210px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:300;backdrop-filter:blur(4px)}
+.modal-box{background:var(--card2);border:1px solid var(--border2);border-radius:14px;padding:24px;width:min(440px,95vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-title{font-weight:700;font-size:1rem;margin-bottom:14px;background:linear-gradient(135deg,var(--text),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.team-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.team-pill{padding:4px 11px;border-radius:20px;font-size:.68rem;font-weight:700;background:var(--card2);border:1px solid var(--border2);cursor:pointer;transition:all .15s}
+.team-pill.selected{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border-color:transparent}
+.hidden{display:none!important}
+.subpage{display:none}.subpage.active{display:block}
+.sub-nav-tab{padding:8px 14px;border:none;background:transparent;color:var(--muted);font-size:.76rem;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;cursor:pointer}
+.sub-nav-tab:hover{color:var(--text)}.sub-nav-tab.active{color:var(--text);border-bottom-color:var(--blue)}
+.ghost-legend{display:flex;gap:14px;font-size:.63rem;color:var(--muted);margin-top:6px}
+.ghost-legend span{display:flex;align-items:center;gap:5px}
+.ghost-legend .dot{width:20px;height:2px;border-radius:1px}
+</style>
+</head>
+<body>
+<div class="sim-banner">&#9888; SIMULATION MODE &mdash; Synthetic data only &middot; Not real trading events</div>
+<div id="alert-bar" class="alert-bar alert-red hidden"><span id="alert-icon">&#128308;</span><span id="alert-text">Flash crash detected on BTC-PERP. Investigating.</span></div>
+
+<div class="top-bar">
+  <div class="logo"><span class="mo">Mocha</span>Trade <span class="badge">OPS CENTER</span></div>
+  <div class="clock" id="clock-display">T+00:00</div>
+  <div id="market-status-chip" class="chip chip-green">NORMAL</div>
+  <div class="spacer"></div>
+  <select id="scenario-select" class="ctrl">
+    <option value="fault" selected>Scenario B: MochaTrade price-feed fault</option>
+    <option value="market">Scenario A: Market-wide crash</option>
+  </select>
+  <select id="speed-select" class="ctrl">
+    <option value="1">1x</option><option value="4">4x</option>
+    <option value="10" selected>10x (~6 min)</option><option value="20">20x (~3 min)</option><option value="60">60x (~1 min)</option>
+  </select>
+  <button class="btn btn-amber btn-sm" id="btn-start">&#9654; Start Sim</button>
+  <button class="btn btn-ghost btn-sm hidden" id="btn-pause">&#9646;&#9646; Pause</button>
+  <button class="btn btn-ghost btn-sm hidden" id="btn-reset">&#8635; Reset</button>
+</div>
+
+<div class="nav-tabs" role="tablist">
+  <button class="nav-tab active" data-page="page-ops" role="tab" aria-selected="true">&#128421; Ops Command</button>
+  <button class="nav-tab pub-tab" data-page="page-public" role="tab" aria-selected="false">&#128065; Public-Facing Preview</button>
+  <button class="nav-tab" data-page="page-whale" role="tab" aria-selected="false">&#128011; Abnormal Liquidations</button>
+</div>
+
+<!-- ===== OPS COMMAND ===== -->
+<div class="page active" id="page-ops" role="tabpanel">
+  <div class="ops-grid">
+
+    <!-- LEFT: Signals -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">&#128225; Live Signals</span>
+        <span id="sig-status-chip" class="chip chip-green" style="margin-left:auto">Stable</span>
+      </div>
+      <div class="panel-body">
+        <div class="sig-card" id="sc-liq">
+          <div class="sig-label">Liquidation Rate</div>
+          <div class="sig-value" id="sv-liq-rate">0<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">/min</span></div>
+          <div class="sig-sub">Total: <span id="sv-liq-total">0</span> &middot; Vol: <span id="sv-liq-vol">$0</span></div>
+          <div class="sig-bar-wrap"><div class="sig-bar" id="sb-liq" style="width:0%;background:var(--green)"></div></div>
+          <div id="cd-liq" class="hidden"></div>
+          <canvas class="mini-chart" id="mc-liq"></canvas>
+        </div>
+        <div class="sig-card" id="sc-tkt">
+          <div class="sig-label">Ticket Inflow</div>
+          <div class="sig-value" id="sv-tkt-rate">0<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">/min</span></div>
+          <div class="sig-sub">Open: <span id="sv-tkt-open">0</span> &middot; Resolved: <span id="sv-tkt-res">0</span></div>
+          <div class="sig-bar-wrap"><div class="sig-bar" id="sb-tkt" style="width:0%;background:var(--blue)"></div></div>
+          <div id="cd-tkt" class="hidden"></div>
+          <canvas class="mini-chart" id="mc-tkt"></canvas>
+        </div>
+        <div class="sig-card" id="sc-gap">
+          <div class="sig-label">Mark-Index Gap</div>
+          <div class="sig-value" id="sv-gap">0.0<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">%</span></div>
+          <div class="sig-sub">Threshold: 5% &middot; Sustained: <span id="sv-gap-dur">0s</span></div>
+          <div class="sig-bar-wrap"><div class="sig-bar" id="sb-gap" style="width:0%;background:var(--green)"></div></div>
+          <div id="cd-gap" class="hidden"></div>
+          <div id="gap-banner" class="gap-banner hidden">&#9888; Mark deviating <span id="gap-pct">0.0</span>% from index</div>
+        </div>
+        <div class="sig-card" id="sc-social">
+          <div class="sig-label">Social Sentiment</div>
+          <div class="sig-value" id="sv-social" style="font-size:1.1rem">Neutral</div>
+          <div class="sig-sub">Mentions/min: <span id="sv-mentions">0</span></div>
+        </div>
+        <div class="sig-card" id="sc-vault" style="opacity:.4;transition:opacity .2s">
+          <div class="sig-label">Liquidity Vault</div>
+          <div class="sig-value" id="sv-vault-bal">$0</div>
+          <div class="sig-sub" id="sv-vault-sub">Absorbed: $0 &middot; Released: $0</div>
+        </div>
+        <div class="sig-card" id="sc-whale">
+          <div class="sig-label">&#128011; Whale Watch / Abnormal Liquidations</div>
+          <div class="sig-value" id="sv-whale-count">0<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)"> flagged</span></div>
+          <div style="font-size:.67rem;color:var(--muted);margin:6px 0;line-height:1.5">
+            <div><span id="sc-whale-c1" style="font-family:var(--mono);color:var(--text);font-weight:700">0</span> &mdash; Mark/index price mismatch</div>
+            <div><span id="sc-whale-c2" style="font-family:var(--mono);color:var(--text);font-weight:700">0</span> &mdash; Unexpected liquidation price</div>
+            <div><span id="sc-whale-c3" style="font-family:var(--mono);color:var(--text);font-weight:700">0</span> &mdash; Execution anomaly</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-whale-review" style="width:100%;margin-top:2px" onclick="goTo('page-whale')">Review 0 cases</button>
+        </div>
+        <div class="sig-card" style="padding:10px">
+          <div class="sig-label" style="margin-bottom:4px">BTC-PERP Price</div>
+          <div class="ghost-legend">
+            <span><span class="dot" style="background:var(--blue)"></span>Index</span>
+            <span><span class="dot" style="background:var(--amber);border-top:1px dashed var(--amber)"></span>Mark</span>
+            <span><span class="dot" style="background:rgba(255,69,96,.4);border-top:1px dashed rgba(255,69,96,.4)"></span>No-action ghost</span>
+          </div>
+          <canvas id="market-canvas"></canvas>
+          <div id="gap-banner2" class="gap-banner hidden" style="margin-top:5px">&#9888; Mark deviating <span id="gap-pct2">0.0</span>% from index</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTRE: Actions -->
+    <div class="panel" style="border-right:1px solid var(--border)">
+      <div class="panel-header">
+        <span class="panel-title">&#9889; Recommended Actions</span>
+        <span id="trig-count-chip" class="chip chip-red hidden" style="margin-left:auto"></span>
+      </div>
+      <div class="panel-body">
+        <!-- PLAYBOOK -->
+        <div class="playbook-section">
+          <div class="playbook-title">&#128218; One-Click Playbook</div>
+          <div class="playbook-grid">
+            <button class="playbook-btn pb-amber" id="pb-reduce-only" onclick="doPlaybook('reduceOnly')">
+              <span class="pb-icon">&#128683;</span>
+              <span class="pb-label">Enable Reduce-Only</span>
+              <span class="pb-status" id="pbs-reduceOnly">Inactive</span>
+            </button>
+            <button class="playbook-btn pb-red" id="pb-liq-engine" onclick="doPlaybook('pauseLiq')">
+              <span class="pb-icon">&#9208;</span>
+              <span class="pb-label">Pause Liq Engine</span>
+              <span class="pb-status" id="pbs-pauseLiq">Inactive</span>
+            </button>
+            <button class="playbook-btn pb-blue" id="pb-circuit" onclick="doPlaybook('circuitBreaker')">
+              <span class="pb-icon">&#9889;</span>
+              <span class="pb-label">Circuit-Breaker</span>
+              <span class="pb-status" id="pbs-circuitBreaker">Inactive</span>
+            </button>
+            <button class="playbook-btn pb-teal" id="pb-comms-hold" onclick="doPlaybook('commsHold')">
+              <span class="pb-icon">&#128226;</span>
+              <span class="pb-label">Holding Comms</span>
+              <span class="pb-status" id="pbs-commsHold">Inactive</span>
+            </button>
+            <button class="playbook-btn pb-purple" id="pb-vault" onclick="doPlaybook('vault')">
+              <span class="pb-icon">&#127974;</span>
+              <span class="pb-label">Enable Liquidity Vault</span>
+              <span class="pb-status" id="pbs-vault">Inactive</span>
+            </button>
+          </div>
+        </div>
+        <!-- TRIGGERS -->
+        <div id="trigger-feed">
+          <div id="no-triggers" style="color:var(--muted);font-size:.8rem;text-align:center;padding:20px 0">No active triggers.<br><span style="font-size:.7rem">Start the simulation to watch the rule engine fire.</span></div>
+        </div>
+        <!-- AUTO-REFUND ENGINE -->
+        <div id="auto-refund-panel" style="border-top:1px solid var(--border);padding-top:10px">
+          <div class="panel-title" style="margin-bottom:6px">&#129302; Auto-Refund Engine</div>
+          <div style="font-size:.78rem;font-weight:700;margin-bottom:3px">Refunds issued: <span id="arf-issued" style="font-family:var(--mono);color:var(--green)">0</span> &middot; Total: <span id="arf-total" style="font-family:var(--mono);color:var(--green)">$0</span></div>
+          <div style="font-size:.68rem;color:var(--muted);line-height:1.4">Detects liquidations caused by system lag or bad price feeds and refunds automatically &mdash; before a ticket is filed.</div>
+        </div>
+        <!-- COMMS -->
+        <div style="border-top:1px solid var(--border);padding-top:10px">
+          <div class="panel-title" style="margin-bottom:8px">&#128232; Comms Templates</div>
+          <div id="tmpl-container"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-manual-log" style="width:100%;margin-top:2px">+ Log Manual Decision</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Decision Log -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">&#128203; Decision Log</span>
+        <span id="log-count" class="chip chip-purple" style="margin-left:auto;font-size:.6rem">0 entries</span>
+      </div>
+      <div class="panel-body" id="decision-log">
+        <div id="log-placeholder" style="color:var(--muted);font-size:.75rem;text-align:center;padding:20px 0">Append-only audit trail.<br>All triggers, comms &amp; decisions appear here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PUBLIC-FACING PREVIEW ===== -->
+<div class="page" id="page-public" role="tabpanel">
+  <div class="pub-wrap">
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <button class="sub-nav-tab active" data-subtab="sub-dashboard">Dashboard</button>
+      <button class="sub-nav-tab" data-subtab="sub-timeline">Timeline</button>
+      <button class="sub-nav-tab" data-subtab="sub-updates">Updates Feed</button>
+      <button class="sub-nav-tab" data-subtab="sub-report">Report Issue</button>
+      <button class="sub-nav-tab" data-subtab="sub-track">Track Case</button>
+      <button class="sub-nav-tab" data-subtab="sub-help">FAQ</button>
+    </div>
+    <div id="sub-dashboard" class="subpage active">
+      <div class="grid-4" style="margin-bottom:14px">
+        <div class="stat-box"><div class="stat-label">Liquidations</div><div class="stat-value" id="stat-liq-count">0</div><div class="stat-sub">positions closed</div></div>
+        <div class="stat-box"><div class="stat-label">Liq Volume</div><div class="stat-value" id="stat-liq-vol">$0</div><div class="stat-sub">notional USD</div></div>
+        <div class="stat-box"><div class="stat-label">Insurance Fund</div><div class="stat-value" id="stat-insurance">$4.20M</div><div class="stat-sub">available</div></div>
+        <div class="stat-box"><div class="stat-label">Open Positions</div><div class="stat-value" id="stat-open-pos">12,847</div><div class="stat-sub">BTC-PERP</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">BTC-PERP Live Price</div>
+        <canvas id="pub-canvas"></canvas>
+        <div class="ghost-legend" style="margin-top:8px">
+          <span><span class="dot" style="background:var(--blue)"></span>Index Price</span>
+          <span><span class="dot" style="background:var(--amber)"></span>Mark Price</span>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Current Phase</div><div class="row"><div id="phase-name" style="font-size:1rem;font-weight:700">Monitoring</div><div id="phase-chip" class="chip chip-green">Phase 1</div><div style="flex:1"></div><div id="phase-desc" style="font-size:.78rem;color:var(--muted)">All systems nominal.</div></div></div>
+      <div class="card" id="verdict-card">
+        <div class="card-title">Cause Verification</div>
+        <div class="vd-row"><span class="vd-label">Market move (index vs pre-crash)</span><span id="vd-market-move" style="font-family:var(--mono)">--</span></div>
+        <div class="vd-row"><span class="vd-label">MochaTrade mark vs index gap</span><span id="vd-gap" style="font-family:var(--mono)">--</span></div>
+        <div class="vd-row"><span class="vd-label">Verdict</span><span id="vd-verdict" class="chip chip-amber">Investigating...</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">Were you affected?</div><p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">File a report and we'll review your case.</p><button class="btn btn-primary btn-sm" onclick="goSubtab('sub-report')">File a Report</button></div>
+        <div class="card"><div class="card-title">Already filed?</div><p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Check your case status.</p><button class="btn btn-ghost btn-sm" onclick="goSubtab('sub-track')">Track My Case</button></div>
+      </div>
+    </div>
+    <div id="sub-timeline" class="subpage"><div class="card"><div class="card-title">Incident Timeline</div><div id="timeline-container"></div></div></div>
+    <div id="sub-updates" class="subpage">
+      <div class="card">
+        <div class="row" style="margin-bottom:12px"><div class="card-title" style="margin:0">Status Updates</div><div style="flex:1"></div><div style="font-size:.7rem;color:var(--muted)">Sent by ops team via templates</div></div>
+        <div id="updates-feed"><div style="color:var(--muted);font-size:.82rem;padding:18px 0;text-align:center">No updates yet. Start the simulation and send comms templates.</div></div>
+      </div>
+    </div>
+    <div id="sub-report" class="subpage">
+      <div class="card" style="max-width:640px">
+        <div class="card-title">Report a Liquidation Issue</div>
+        <div id="report-success" class="hidden">
+          <div style="text-align:center;padding:24px 0">
+            <div style="font-size:2rem;margin-bottom:10px">&#10003;</div>
+            <div style="font-size:1rem;font-weight:700;margin-bottom:7px">Report Received</div>
+            <div style="color:var(--muted);font-size:.8rem;margin-bottom:10px">Your case ID is</div>
+            <div id="case-id-display" style="font-size:2rem;font-weight:800;color:var(--blue);letter-spacing:.08em;font-family:var(--mono)"></div>
+            <div style="margin-top:14px;display:flex;gap:8px;justify-content:center">
+              <button class="btn btn-primary btn-sm" onclick="goSubtab('sub-track')">Track My Case</button>
+              <button class="btn btn-ghost btn-sm" id="btn-new-report">Submit another</button>
+            </div>
+          </div>
+        </div>
+        <form id="report-form" novalidate>
+          <div class="form-grid">
+            <div class="form-group"><label for="r-name">Full Name *</label><input type="text" id="r-name" placeholder="Alex Chen"><span class="err-msg" id="err-name"></span></div>
+            <div class="form-group"><label for="r-email">Email *</label><input type="email" id="r-email" placeholder="alex@example.com"><span class="err-msg" id="err-email"></span></div>
+            <div class="form-group"><label for="r-side">Position Side *</label><select id="r-side"><option value="">-- select --</option><option value="long">Long</option><option value="short">Short</option></select><span class="err-msg" id="err-side"></span></div>
+            <div class="form-group"><label for="r-leverage">Leverage *</label><select id="r-leverage"><option value="">-- select --</option><option value="2">2x</option><option value="5">5x</option><option value="10">10x</option><option value="20">20x</option><option value="50">50x</option><option value="100">100x</option></select><span class="err-msg" id="err-leverage"></span></div>
+            <div class="form-group"><label for="r-entry">Entry Price (USD) *</label><input type="number" id="r-entry" placeholder="68000" min="1"><span class="err-msg" id="err-entry"></span></div>
+            <div class="form-group"><label for="r-liq-price">Liquidation Price (USD) *</label><input type="number" id="r-liq-price" placeholder="55800" min="1"><span class="err-msg" id="err-liq-price"></span></div>
+            <div class="form-group"><label for="r-liq-time">Liquidation Time (UTC) *</label><input type="time" id="r-liq-time" step="60"><span class="err-msg" id="err-liq-time"></span></div>
+            <div class="form-group"><label for="r-loss">Estimated Loss (USD) *</label><input type="number" id="r-loss" placeholder="4200" min="1"><span class="err-msg" id="err-loss"></span></div>
+            <div class="form-group full"><label for="r-desc">Description *</label><textarea id="r-desc" placeholder="Describe what happened."></textarea><span class="err-msg" id="err-desc"></span></div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;align-items:center"><button type="submit" class="btn btn-primary">Submit Report</button><span style="font-size:.7rem;color:var(--muted)">All fields required</span></div>
+        </form>
+      </div>
+    </div>
+    <div id="sub-track" class="subpage">
+      <div class="card" style="max-width:640px">
+        <div class="card-title">Track My Case</div>
+        <div class="row" style="gap:7px"><input type="text" id="track-input" placeholder="MT-1042 or your email" style="flex:1"><button class="btn btn-primary btn-sm" id="btn-track">Look Up</button></div>
+        <div id="case-result"></div>
+      </div>
+    </div>
+    <div id="sub-help" class="subpage"><div class="card" style="max-width:640px"><div class="card-title">FAQ</div><div id="faq-container"></div></div></div>
+  </div>
+</div>
+
+<!-- ===== ABNORMAL LIQUIDATIONS ===== -->
+<div class="page" id="page-whale" role="tabpanel">
+  <div class="pub-wrap" style="max-width:1000px">
+    <div class="card">
+      <div class="row" style="margin-bottom:14px;justify-content:space-between">
+        <div class="row" style="gap:10px">
+          <div style="font-size:1rem;font-weight:700">&#128011; Abnormal Liquidations &mdash; flagged for manual review</div>
+          <span id="whale-chip" class="chip chip-red">0 pending</span>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted)">High-notional (&gt;$100k) anomalous liquidations requiring ops intervention</div>
+      </div>
+      <div id="whale-table-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual log modal -->
+<div id="manual-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">&#128203; Log a Manual Decision</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:5px">Who made this decision?</div>
+      <div class="team-strip" id="team-picker">
+        <div class="team-pill selected" data-who="Elisha">Elisha (Eng)</div>
+        <div class="team-pill" data-who="Yuv">Yuv (Trading Ops)</div>
+        <div class="team-pill" data-who="Shivali">Shivali (Comms)</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">Decision description</div>
+      <textarea id="manual-log-text" placeholder="e.g. Reduce-only mode enabled on BTC-PERP" style="width:100%"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" id="btn-manual-submit">Log It</button>
+      <button class="btn btn-ghost btn-sm" id="btn-manual-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Revise decision modal -->
+<div id="revise-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">&#9998; Revise Decision</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--card);border-radius:6px;border-left:3px solid var(--teal)">Original entry will be preserved. A correction note will be appended below it.</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">Correction / clarification</div>
+      <textarea id="revise-log-text" placeholder="e.g. Correction: Reduce-Only was lifted at T+22, not T+20 as previously logged." style="width:100%"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" id="btn-revise-submit">Append Correction</button>
+      <button class="btn btn-ghost btn-sm" id="btn-revise-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audio context (for subtle alert beep) -->
+<script>
+/* ========= AUDIO ========= */
+var audioCtx=null;
+function initAudio(){if(!audioCtx)try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function beepCrit(){initAudio();if(!audioCtx)return;try{var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sine';o.frequency.setValueAtTime(660,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(440,audioCtx.currentTime+.12);g.gain.setValueAtTime(.12,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.35);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+.35);}catch(e){}}
+function beepWarn(){initAudio();if(!audioCtx)return;try{var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sine';o.frequency.value=520;g.gain.setValueAtTime(.07,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.2);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+.2);}catch(e){}}
+
+/* ========= CONFIG ========= */
+var CFG={BASE_PRICE:68000,CRASH_DROP_PCT:.25,REBOUND_PCT:.45,CRASH_MINUTE:4,CRASH_DURATION_MIN:3,REBOUND_START_MIN:9,GAP_THRESHOLD_PCT:5,COMP_CAP:15000,INSURANCE_START:4200000,INCIDENT_MINUTES:60,NOISE_AMPLITUDE:80,TICK_MS:200,VERDICT_MINUTE:12,VAULT_ABSORB_PCT:.55,VAULT_RELEASE_RATE:.08};
+var SCENARIOS={market:{label:'Market-wide crash',peakGapPct:.6,verdict:'Market-wide move: liquidations stand'},fault:{label:'MochaTrade price-feed fault',peakGapPct:8.2,verdict:'Pricing fault: compensation track'}};
+function sc(){return SCENARIOS[state.scenario];}
+
+/* ========= STATE ========= */
+var state={running:false,simMinute:0,tickCount:0,priceHistory:[],liqCount:0,liqVol:0,liqPerMin:0,liqRateHistory:[],ghostLiqHistory:[],openPos:12847,insuranceFund:CFG.INSURANCE_START,compensationPaid:0,markGapPct:0,gapAbove5Since:null,currentPhase:0,updatesShown:[],lastAlertLevel:-1,ticketsOpen:0,ticketsResolved:0,ticketInflowHistory:[],ticketsInflowPerMin:0,slaBreaches:0,cases:{},caseCounter:1000,speedMult:10,scenario:'fault',triggers:{},logEntries:[],tmplSent:{},vaultEnabled:false,vaultAbsorbed:0,vaultBalance:0,vaultReleased:0,refundsIssued:0,refundedTotal:0,refundLog:[],abnormalQueue:[],abnormalIdCounter:1000,playbook:{reduceOnly:false,pauseLiq:false,circuitBreaker:false,commsHold:false,vault:false},countdowns:{liq:120,tkt:120,gap:120},aboveThresholdSince:{liq:null,tkt:null,gap:null}};
+var tickInterval=null,lastCritSoundAt=-999,reviseTargetId=null;
+
+/* ========= PRICE CURVES ========= */
+// Index price: flat pre-crash, sharp V-drop, partial rebound
+function getIndexPrice(t){
+  if(t<CFG.CRASH_MINUTE)return CFG.BASE_PRICE+(Math.random()-.5)*40;
+  if(t<CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN){
+    var p=(t-CFG.CRASH_MINUTE)/CFG.CRASH_DURATION_MIN;
+    return CFG.BASE_PRICE*(1-CFG.CRASH_DROP_PCT*p);
+  }
+  var low=CFG.BASE_PRICE*(1-CFG.CRASH_DROP_PCT);
+  if(t<CFG.REBOUND_START_MIN)return low+(Math.random()-.5)*60;
+  var rp=Math.min(1,(t-CFG.REBOUND_START_MIN)/28);
+  return low+CFG.BASE_PRICE*CFG.CRASH_DROP_PCT*CFG.REBOUND_PCT*rp+(Math.random()-.5)*80;
+}
+// Mark price: lags index during crash (creates the gap), converges after circuit-breaker
+function getMarkPrice(t,ip){
+  var noise=(Math.random()-.5)*CFG.NOISE_AMPLITUDE,peak=sc().peakGapPct/100,conv=peak*.3;
+  if(state.playbook.vault){peak*=.45;conv*=.45;}
+  if(state.playbook.circuitBreaker){peak*=.08;conv*=.08;}
+  if(t<CFG.CRASH_MINUTE)return ip+(Math.random()-.5)*40;
+  if(t<CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN){
+    var lag=1-(t-CFG.CRASH_MINUTE)/CFG.CRASH_DURATION_MIN;
+    return ip-CFG.BASE_PRICE*peak*lag+noise*.4;
+  }
+  if(t<CFG.REBOUND_START_MIN+8){
+    var cv=Math.min(1,(t-CFG.CRASH_MINUTE-CFG.CRASH_DURATION_MIN)/10);
+    return ip-CFG.BASE_PRICE*conv*(1-cv)+noise*.3;
+  }
+  return ip+(Math.random()-.5)*60;
+}
+// Ghost mark: always uses FULL peak gap (no circuit-breaker mitigation) for the "do nothing" overlay
+function getMarkPriceGhost(t,ip){
+  var noise=(Math.random()-.5)*CFG.NOISE_AMPLITUDE,peak=sc().peakGapPct/100,conv=peak*.3;
+  if(t<CFG.CRASH_MINUTE)return ip+(Math.random()-.5)*40;
+  if(t<CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN){
+    var lag=1-(t-CFG.CRASH_MINUTE)/CFG.CRASH_DURATION_MIN;
+    return ip-CFG.BASE_PRICE*peak*lag+noise*.4;
+  }
+  if(t<CFG.REBOUND_START_MIN+8){
+    var cv=Math.min(1,(t-CFG.CRASH_MINUTE-CFG.CRASH_DURATION_MIN)/10);
+    return ip-CFG.BASE_PRICE*conv*(1-cv)+noise*.3;
+  }
+  return ip+(Math.random()-.5)*60;
+}
+
+/* ========= PHASES ========= */
+var PHASES=[
+  {name:'Detect',time:'T+00:00-T+05:00',startMin:0,endMin:5,desc:'Anomaly detected. Team waking up.',actions:[{owner:'Engineering',text:'PagerDuty alert fires - price oracle deviation',doneAt:1},{owner:'Trading Ops',text:'Manual review of order book and liq queue',doneAt:2},{owner:'Engineering',text:'Pull index price feed logs last 15 min',doneAt:3},{owner:'Support',text:'Monitor ticket volume and social mentions',doneAt:4}]},
+  {name:'Contain',time:'T+05:00-T+15:00',startMin:5,endMin:15,desc:'Halt further damage. Circuit-breakers and Reduce-Only mode.',actions:[{owner:'Engineering',text:'Switch BTC-PERP to Reduce-Only mode',doneAt:6},{owner:'Trading Ops',text:'Pause liquidation engine pending assessment',doneAt:7},{owner:'Engineering',text:'Activate mark-price circuit-breaker (+-5% clamp)',doneAt:9},{owner:'Support',text:'Publish first public acknowledgment',doneAt:10},{owner:'Trading Ops',text:'Snapshot all positions at crash low',doneAt:12}]},
+  {name:'Stabilize',time:'T+15:00-T+30:00',startMin:15,endMin:30,desc:'Markets stabilizing. Forensic root cause analysis.',actions:[{owner:'Engineering',text:'Root cause: thin order book depth at 3-sigma',doneAt:16},{owner:'Engineering',text:'Deploy hotfix: minimum depth guard',doneAt:20},{owner:'Trading Ops',text:'Lift Reduce-Only - BTC-PERP resumes normal',doneAt:22},{owner:'Support',text:'Second public update: root cause status',doneAt:25},{owner:'Trading Ops',text:'Begin mark-vs-index gap audit',doneAt:28}]},
+  {name:'Decide',time:'T+30:00-T+45:00',startMin:30,endMin:45,desc:'Compensation policy. Insurance fund review.',actions:[{owner:'Trading Ops',text:'Identify all liquidations during >5% gap window',doneAt:32},{owner:'Engineering',text:'Export liquidation records with mark/index columns',doneAt:35},{owner:'Trading Ops',text:'Set formula: loss x (gap%-5%)/gap%, cap $15K',doneAt:38},{owner:'Support',text:'Third public update: compensation criteria',doneAt:40},{owner:'Trading Ops',text:'Insurance fund draw approved by team',doneAt:43}]},
+  {name:'Recover',time:'T+45:00-T+60:00',startMin:45,endMin:60,desc:'Credits applied. Post-mortem scheduled.',actions:[{owner:'Engineering',text:'Compensation credits pushed to accounts',doneAt:47},{owner:'Support',text:'Email notifications to all affected users',doneAt:50},{owner:'Engineering',text:'Enhanced monitoring: alert at 2% deviation',doneAt:53},{owner:'Support',text:'Final public update: 60-min summary',doneAt:60},{owner:'Trading Ops',text:'Post-mortem scheduled: 48-72h',doneAt:60}]},
+];
+
+/* ========= COMMS TEMPLATES ========= */
+var TEMPLATES=[
+  {id:'ack',tag:'Acknowledge',tagColor:'var(--red)',title:'Incident Acknowledged',preview:'We are aware of unusual price activity on BTC-PERP. Team actively investigating. Next update in 15 minutes.',fullMsg:function(){return 'We are aware of unusual price activity on BTC-PERP beginning at approximately 09:04 UTC. Our team is actively investigating. All affected positions have been logged. We do not yet have information on the root cause and will not speculate. Next update within 15 minutes.';},recommendedFrom:5,recommendedUntil:12,sev:'red'},
+  {id:'reduce_only',tag:'Reduce-Only Notice',tagColor:'var(--amber)',title:'Reduce-Only Mode Enabled',preview:'BTC-PERP switched to Reduce-Only. New positions cannot be opened while we investigate.',fullMsg:function(){return 'BTC-PERP has been switched to Reduce-Only mode. You may close or reduce existing positions but cannot open new ones. We will notify you when normal trading resumes. The rest of your portfolio is unaffected.';},recommendedFrom:6,recommendedUntil:16,sev:'amber'},
+  {id:'root_cause',tag:'Root Cause Found',tagColor:'var(--blue)',title:'Root Cause Identified',preview:{market:'BTC fell ~18% across all venues. Mark price within 1% of index - liquidations stand.',fault:'Mark price deviated >5% from index due to pricing fault. Audit underway for compensation.'},fullMsg:function(){if(state.scenario==='market')return 'BTC fell approximately 18% across major venues. Our mark price stayed within 1% of the index throughout, so liquidations were triggered at fair prices. We are verifying all liquidation records. Next update in 15 minutes.';return 'Root cause identified: insufficient order book depth caused a cascade that moved BTC-PERP mark price more than 5% below the index. A hotfix has been deployed. BTC-PERP now trading normally. Auditing all records for compensation eligibility.';},recommendedFrom:25,recommendedUntil:35,sev:'amber'},
+  {id:'comp_policy',tag:'Compensation Policy',tagColor:'var(--purple)',title:'Compensation Criteria Announced',preview:{market:'Mark stayed within threshold - liquidations stand.',fault:'Accounts liquidated during >5% gap window eligible. Formula: Loss x (gap%-5%)/gap%, cap $15K.'},fullMsg:function(){if(state.scenario==='market')return 'Because our prices tracked the market, liquidations will stand. Anyone can request a review. Compensation is only offered where our pricing deviated more than 5% from index, which did not occur.';return 'Accounts whose liquidation occurred during the >5% mark-index gap period are eligible for partial compensation. Formula: Loss x (gap% - 5%) / gap%, capped at $15,000. File a report if you have not already done so.';},recommendedFrom:38,recommendedUntil:48,sev:'amber'},
+  {id:'resolved',tag:'Resolved',tagColor:'var(--green)',title:'60-Minute Summary - Incident Contained',preview:{market:'BTC-PERP trading normally since T+22. All cases reviewed. Post-mortem in 48-72h.',fault:'BTC-PERP normal since T+22. Compensation credits being applied. Post-mortem in 48-72h.'},fullMsg:function(){if(state.scenario==='market')return 'BTC-PERP has been trading normally since T+22. Every filed case has been checked against the index. A post-mortem will be published within 48-72 hours.';return 'BTC-PERP has been trading normally since T+22. All eligible compensation credits are being applied now. A full post-mortem will be published within 48-72 hours.';},recommendedFrom:58,recommendedUntil:61,sev:'green'},
+];
+
+/* ========= RULE ENGINE ========= */
+var RULES=[
+  {id:'cascade_alert',check:function(s){return s.liqPerMin>20;},severity:'crit',title:'Escalate: Possible Liquidation Cascade',why:function(s){return 'Liquidation rate is '+Math.round(s.liqPerMin)+'/min &mdash; exceeds 20/min threshold. Cascade pattern: each liquidation drives price lower, triggering more.';},recommend:'Enable Reduce-Only mode immediately. Pause liquidation engine. Snapshot open positions.'},
+  {id:'gap_pause',check:function(s){var abs=Math.abs(s.markGapPct);if(abs>CFG.GAP_THRESHOLD_PCT){if(s.gapAbove5Since===null)s.gapAbove5Since=s.simMinute;return(s.simMinute-s.gapAbove5Since)>=2;}else{s.gapAbove5Since=null;return false;}},severity:'crit',title:'Recommended: Pause Liquidations (Gap >5% Sustained)',why:function(s){return 'Mark-Index gap is '+Math.abs(s.markGapPct).toFixed(1)+'% and has exceeded 5% for 2+ minutes. Liquidations are firing at distorted prices.';},recommend:'Accept to log "Liquidation engine paused" and alert engineering. Activate circuit-breaker.'},
+  {id:'holding_msg',check:function(s){return s.ticketsInflowPerMin>15;},severity:'pending',title:'Suggest: Post Holding Message',why:function(s){return 'Ticket inflow is '+Math.round(s.ticketsInflowPerMin)+'/min &mdash; exceeds 15/min threshold. A holding message reduces duplicate tickets by ~40%.';},recommend:'Send the "Acknowledge" template now. Consider enabling Holding Comms playbook.'},
+  {id:'comp_review',check:function(s){return s.simMinute>=28&&s.scenario==='fault'&&!s.triggers['comp_review'];},severity:'pending',title:'Action: Start Compensation Audit',why:function(s){return 'Market stabilizing at T+'+Math.floor(s.simMinute)+'. Gap audit window defined (T+04 to T+08). Pull all liquidation records and cross-reference against index prices.';},recommend:'Assign to Yuv (Trading Ops). Export mark vs index CSV. Begin eligibility scoring.'},
+];
+
+/* ========= FAQ ========= */
+var FAQ=[
+  {q:'Are my funds safe?',a:'Yes. Non-leveraged balances are unaffected. Funds in positions that were liquidated are under review.'},
+  {q:'Why was I liquidated?',a:{market:'Our mark price tracked the index closely throughout. Liquidations executed at fair prices.',fault:'Mark price dipped >5% below index due to a pricing fault on our side. Some liquidations may be eligible for compensation.'}},
+  {q:'How is compensation decided?',a:{market:'Mark stayed within 1% of index - no compensation due. All cases explained in writing.',fault:'Formula: Loss x (gap%-5%) / gap%, capped at $15K. Full calculation shown in your case record.'}},
+  {q:'Can I still trade BTC-PERP?',a:'Yes. BTC-PERP returned to normal at approximately T+22 minutes into the incident.'},
+  {q:'When is the post-mortem?',a:'Within 48-72 hours of incident start, covering root cause, timeline, and permanent fixes.'},
+];
+
+/* ========= NAV ========= */
+document.querySelectorAll('.nav-tab[data-page]').forEach(function(tab){tab.addEventListener('click',function(){goTo(tab.dataset.page);});});
+function goTo(pageId){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.nav-tab[data-page]').forEach(function(t){t.classList.remove('active');t.setAttribute('aria-selected','false');});document.getElementById(pageId).classList.add('active');var tab=document.querySelector('[data-page="'+pageId+'"]');if(tab){tab.classList.add('active');tab.setAttribute('aria-selected','true');}if(pageId==='page-public'){setTimeout(function(){_pubCanvasW=0;renderPubChart(state.priceHistory);},50);}if(pageId==='page-whale'){renderWhalePage();}}
+document.querySelectorAll('[data-subtab]').forEach(function(btn){btn.addEventListener('click',function(){goSubtab(btn.dataset.subtab);});});
+function goSubtab(id){document.querySelectorAll('.subpage').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('[data-subtab]').forEach(function(b){b.classList.remove('active');});var el=document.getElementById(id);if(el)el.classList.add('active');var b=document.querySelector('[data-subtab="'+id+'"]');if(b)b.classList.add('active');}
+
+/* ========= PLAYBOOK ACTIONS ========= */
+function doPlaybook(action){
+  initAudio();
+  var labels={reduceOnly:'Reduce-Only mode enabled',pauseLiq:'Liquidation engine paused',circuitBreaker:'Circuit-breaker activated (gap clamped)',commsHold:'Holding comms line opened',vault:'Liquidity vault absorption enabled'};
+  var owners={reduceOnly:'Elisha',pauseLiq:'Yuv',circuitBreaker:'Elisha',commsHold:'Shivali',vault:'Yuv'};
+  if(state.playbook[action])return;
+  state.playbook[action]=true;if(action==='vault')state.vaultEnabled=true;
+  var btn=document.getElementById('pb-'+actionToBtnId(action)),status=document.getElementById('pbs-'+action);
+  if(btn){btn.disabled=true;btn.classList.add('active-action');}
+  if(status)status.textContent='Active';
+  appendLog({type:'action',body:'&#128218; Playbook: <strong>'+labels[action]+'</strong>',who:owners[action]});
+  beepWarn();
+}
+function actionToBtnId(a){return{reduceOnly:'reduce-only',pauseLiq:'liq-engine',circuitBreaker:'circuit',commsHold:'comms-hold',vault:'vault'}[a]||a;}
+
+/* ========= SIM CONTROLS ========= */
+document.getElementById('btn-start').addEventListener('click',startSim);
+document.getElementById('btn-pause').addEventListener('click',togglePause);
+document.getElementById('btn-reset').addEventListener('click',resetSim);
+document.getElementById('speed-select').addEventListener('change',function(e){state.speedMult=parseInt(e.target.value);});
+document.getElementById('scenario-select').addEventListener('change',function(e){state.scenario=e.target.value;buildFAQ();buildTemplates();});
+
+function startSim(){resetStateOnly();initAudio();state.running=true;state.speedMult=parseInt(document.getElementById('speed-select').value);state.scenario=document.getElementById('scenario-select').value;document.getElementById('btn-start').classList.add('hidden');document.getElementById('btn-pause').classList.remove('hidden');document.getElementById('btn-reset').classList.remove('hidden');document.getElementById('alert-bar').classList.remove('hidden');document.getElementById('scenario-select').disabled=true;document.getElementById('updates-feed').innerHTML='';appendLog({type:'action',body:'Simulation started &mdash; Scenario: <span class="log-who">'+sc().label+'</span>',who:null});buildTemplates();tickInterval=setInterval(tick,CFG.TICK_MS);}
+function togglePause(){if(state.running){state.running=false;clearInterval(tickInterval);document.getElementById('btn-pause').textContent='&#9654; Resume';}else{state.running=true;document.getElementById('btn-pause').textContent='&#9646;&#9646; Pause';tickInterval=setInterval(tick,CFG.TICK_MS);}}
+function resetSim(){clearInterval(tickInterval);tickInterval=null;resetStateOnly();document.getElementById('btn-start').classList.remove('hidden');document.getElementById('btn-pause').classList.add('hidden');document.getElementById('btn-reset').classList.add('hidden');document.getElementById('btn-pause').textContent='&#9646;&#9646; Pause';document.getElementById('alert-bar').classList.add('hidden');document.getElementById('scenario-select').disabled=false;document.getElementById('updates-feed').innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:18px 0;text-align:center">No updates yet. Start the simulation and send comms templates.</div>';document.getElementById('trigger-feed').innerHTML='<div id="no-triggers" style="color:var(--muted);font-size:.8rem;text-align:center;padding:20px 0">No active triggers.<br><span style="font-size:.7rem">Start the simulation to watch the rule engine fire.</span></div>';document.getElementById('trig-count-chip').classList.add('hidden');document.getElementById('decision-log').innerHTML='<div id="log-placeholder" style="color:var(--muted);font-size:.75rem;text-align:center;padding:20px 0">Append-only audit trail.<br>All triggers, comms &amp; decisions appear here.</div>';document.getElementById('log-count').textContent='0 entries';['reduce-only','liq-engine','circuit','comms-hold','vault'].forEach(function(id){var btn=document.getElementById('pb-'+id);if(btn){btn.disabled=false;btn.classList.remove('active-action');}});['reduceOnly','pauseLiq','circuitBreaker','commsHold','vault'].forEach(function(k){var el=document.getElementById('pbs-'+k);if(el)el.textContent='Inactive';});buildTemplates();renderAll();}
+function resetStateOnly(){var sc2=state.cases,sc3=state.caseCounter,sc4=state.speedMult,sc5=state.scenario;state={running:false,simMinute:0,tickCount:0,priceHistory:[],liqCount:0,liqVol:0,liqPerMin:0,liqRateHistory:[],ghostLiqHistory:[],openPos:12847,insuranceFund:CFG.INSURANCE_START,compensationPaid:0,markGapPct:0,gapAbove5Since:null,currentPhase:0,updatesShown:[],lastAlertLevel:-1,ticketsOpen:0,ticketsResolved:0,ticketInflowHistory:[],ticketsInflowPerMin:0,slaBreaches:0,cases:sc2,caseCounter:sc3,speedMult:sc4,scenario:sc5,triggers:{},logEntries:[],tmplSent:{},vaultEnabled:false,vaultAbsorbed:0,vaultBalance:0,vaultReleased:0,refundsIssued:0,refundedTotal:0,refundLog:[],abnormalQueue:[],abnormalIdCounter:1000,playbook:{reduceOnly:false,pauseLiq:false,circuitBreaker:false,commsHold:false,vault:false},countdowns:{liq:120,tkt:120,gap:120},aboveThresholdSince:{liq:null,tkt:null,gap:null}};lastCritSoundAt=-999;}
+
+/* ========= COUNTDOWN TIMERS ========= */
+function updateCountdowns(){
+  var sd=(state.speedMult*CFG.TICK_MS)/60000;
+  var ESCALATE_THRESHOLD_S=120;
+  ['liq','tkt','gap'].forEach(function(key){
+    var above;
+    if(key==='liq')above=state.liqPerMin>15;
+    else if(key==='tkt')above=state.ticketsInflowPerMin>10;
+    else above=Math.abs(state.markGapPct)>3;
+    if(above){
+      if(state.aboveThresholdSince[key]===null)state.aboveThresholdSince[key]=state.simMinute;
+      var elapsed=(state.simMinute-state.aboveThresholdSince[key])*60;
+      var remaining=Math.max(0,ESCALATE_THRESHOLD_S-elapsed);
+      state.countdowns[key]=remaining;
+    }else{
+      state.aboveThresholdSince[key]=null;state.countdowns[key]=ESCALATE_THRESHOLD_S;
+    }
+    var el=document.getElementById('cd-'+key);if(!el)return;
+    if(above&&state.countdowns[key]<ESCALATE_THRESHOLD_S){
+      var secs=Math.round(state.countdowns[key]);
+      var isCrit=secs<30;
+      el.className=isCrit?'countdown-pill':'countdown-pill warn-pill';
+      el.innerHTML=(isCrit?'&#9888; ':'&#8987; ')+'Auto-escalates in '+secs+'s';
+      el.classList.remove('hidden');
+    }else{el.classList.add('hidden');}
+  });
+}
+
+/* ========= MAIN TICK ========= */
+function tick(){
+  if(!state.running)return;
+  var sd=(state.speedMult*CFG.TICK_MS)/60000;
+  state.simMinute=Math.min(CFG.INCIDENT_MINUTES,state.simMinute+sd);
+  state.tickCount++;
+  var t=state.simMinute,ip=getIndexPrice(t),mp=getMarkPrice(t,ip);
+  state.markGapPct=((mp-ip)/ip)*100;
+  if(state.tickCount%3===0){state.priceHistory.push({indexP:ip,markP:mp,ghostP:getMarkPriceGhost(t,ip),t:t});if(state.priceHistory.length>400)state.priceHistory.shift();}
+
+  var ld=0,ghostLd=0;
+  if(t>=CFG.CRASH_MINUTE&&t<CFG.REBOUND_START_MIN){
+    var spk=t<CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN?18:4;
+    ghostLd=Math.floor(Math.random()*spk);
+    var mult=1;
+    if(state.playbook.pauseLiq)mult=0;
+    else if(state.playbook.reduceOnly)mult=.3;
+    ld=Math.floor(ghostLd*mult);
+    state.liqCount+=ld;
+    var notional=ld*(ip*(.04+Math.random()*.28));
+    if(state.playbook.vault){
+      var ext=notional*(1-CFG.VAULT_ABSORB_PCT),abs=notional*CFG.VAULT_ABSORB_PCT;
+      state.liqVol+=ext;state.vaultAbsorbed+=abs;state.vaultBalance+=abs;
+    }else{state.liqVol+=notional;}
+    state.openPos-=Math.floor(ld*.8);if(state.openPos<9000)state.openPos=9000;
+  }else if(t>=CFG.REBOUND_START_MIN&&state.openPos<12847){state.openPos+=Math.floor(Math.random()*4);}
+  if(t>=CFG.REBOUND_START_MIN&&state.vaultBalance>0){
+    var rel=CFG.VAULT_RELEASE_RATE*state.vaultBalance;
+    state.vaultBalance-=rel;state.vaultReleased+=rel;state.liqVol+=rel;
+    if(state.vaultBalance<1){state.vaultReleased+=state.vaultBalance;state.liqVol+=state.vaultBalance;state.vaultBalance=0;}
+  }
+  state.liqRateHistory.push(ld);if(state.liqRateHistory.length>20)state.liqRateHistory.shift();
+  state.ghostLiqHistory.push(ghostLd);if(state.ghostLiqHistory.length>20)state.ghostLiqHistory.shift();
+  var rs=state.liqRateHistory.reduce(function(a,b){return a+b;},0);
+  state.liqPerMin=rs/(state.liqRateHistory.length*sd)*sd*5;
+
+  if(state.scenario==='fault'&&Math.abs(state.markGapPct)>CFG.GAP_THRESHOLD_PCT&&state.tickCount%8===0){
+    var rNotional=(2000+Math.random()*16000)*(ip/CFG.BASE_PRICE),pg=sc().peakGapPct;
+    var refund=Math.min(rNotional*(pg-CFG.GAP_THRESHOLD_PCT)/pg,CFG.COMP_CAP);
+    refund=Math.round(refund);
+    if(refund>0){
+      state.refundsIssued++;state.refundedTotal+=refund;
+      state.insuranceFund=Math.max(0,state.insuranceFund-refund);
+      var rAcct='#'+(4000+Math.floor(Math.random()*900));
+      state.refundLog.push({account:rAcct,notional:rNotional,amount:refund,t:t});
+      appendLog({type:'action',body:'&#10003; Auto-refund issued &mdash; Account '+rAcct+' &mdash; $'+refund.toLocaleString()+' credited (system-caused liquidation, no ticket required)',who:'Auto-Refund Engine'});
+    }
+  }
+
+  if(t>=CFG.CRASH_MINUTE&&state.tickCount%10===0&&Math.random()<0.333){
+    var wNotional=Math.round(100000+Math.random()*380000);
+    var expP=Math.round(ip*(.97+Math.random()*.02)),actP=Math.round(mp*(.96+Math.random()*.02));
+    var dPct=Math.abs((actP-expP)/expP)*100;
+    if(dPct<1.5){actP=Math.round(expP*(1-(.03+Math.random()*.05)));dPct=Math.abs((actP-expP)/expP)*100;}
+    var rIss=Math.random(),iss=rIss<.65?'Mark/index price mismatch':rIss<.85?'Unexpected liquidation price':'Execution anomaly';
+    var abId='#'+(state.abnormalIdCounter++);
+    state.abnormalQueue.push({id:abId,account:abId,issue:iss,expected:expP,actual:actP,diffPct:dPct,notional:wNotional,status:'pending',flaggedAt:state.simMinute});
+  }
+
+  if(t>CFG.CRASH_MINUTE){
+    var base=t<20?10:t<35?4:2;
+    var commsReduce=state.playbook.commsHold?.4:1;
+    var ti=Math.floor(Math.random()*base*commsReduce);
+    var to=Math.floor(Math.random()*3);
+    state.ticketsOpen+=ti;state.ticketsResolved+=Math.min(to,state.ticketsOpen);state.ticketsOpen-=Math.min(to,state.ticketsOpen);
+    state.ticketInflowHistory.push(ti);if(state.ticketInflowHistory.length>20)state.ticketInflowHistory.shift();
+    var is2=state.ticketInflowHistory.reduce(function(a,b){return a+b;},0);
+    state.ticketsInflowPerMin=is2/(state.ticketInflowHistory.length*sd)*sd*5;
+  }
+  if(t>=CFG.CRASH_MINUTE&&t<CFG.REBOUND_START_MIN&&state.lastAlertLevel!==1){setAlertBar('red','Flash crash in progress on BTC-PERP. Circuit-breaker engaged. Reduce-Only active.');state.lastAlertLevel=1;}
+  else if(t>=CFG.REBOUND_START_MIN&&t<45&&state.lastAlertLevel!==2){setAlertBar('amber','BTC-PERP stabilizing. Compensation audit underway. Normal trading resumed.');state.lastAlertLevel=2;}
+  else if(t>=45&&state.lastAlertLevel!==3){setAlertBar('green','BTC-PERP trading normally. Post-mortem scheduled within 48-72h.');state.lastAlertLevel=3;}
+  state.currentPhase=0;for(var i=0;i<PHASES.length;i++){if(t>=PHASES[i].startMin)state.currentPhase=i;}
+  updateCountdowns();runRuleEngine();updateTemplateRecommendations();
+  if(t>=CFG.INCIDENT_MINUTES){state.running=false;clearInterval(tickInterval);tickInterval=null;document.getElementById('btn-pause').textContent='&#9654; Resume';document.getElementById('scenario-select').disabled=false;}
+  renderAll();
+}
+
+/* ========= RULE ENGINE ========= */
+function runRuleEngine(){RULES.forEach(function(rule){if(state.triggers[rule.id]&&state.triggers[rule.id]!=='pending')return;var fired=rule.check(state);if(fired&&!state.triggers[rule.id]){state.triggers[rule.id]='pending';injectTriggerCard(rule);appendLog({type:'alert',body:'&#128308; Trigger fired: <strong>'+rule.title+'</strong><br><span style="color:var(--muted)">'+rule.why(state)+'</span>',who:null});if(rule.severity==='crit'&&state.simMinute-lastCritSoundAt>2){beepCrit();lastCritSoundAt=state.simMinute;flashAlertBar();}}});}
+function injectTriggerCard(rule){var feed=document.getElementById('trigger-feed');var nt=document.getElementById('no-triggers');if(nt)nt.remove();var card=document.createElement('div');card.className='trigger-card '+(rule.severity==='crit'?'crit-trigger':'pending');card.id='trig-'+rule.id;card.innerHTML='<div class="trig-who">RULE ENGINE &middot; '+(rule.severity==='crit'?'&#9888; CRITICAL':'&#8505; ADVISORY')+'</div><div class="trig-title">'+rule.title+'</div><div class="trig-why">'+rule.why(state)+'</div><div class="trig-rec">&#9654; RECOMMENDED: '+rule.recommend+'</div><div class="trig-actions"><button class="btn btn-green btn-sm" id="acc-'+rule.id+'">&#10003; Accept &amp; Log</button><button class="btn btn-ghost btn-sm" id="dis-'+rule.id+'">&#10007; Dismiss</button></div>';feed.insertBefore(card,feed.firstChild);document.getElementById('acc-'+rule.id).addEventListener('click',function(){acceptTrigger(rule);});document.getElementById('dis-'+rule.id).addEventListener('click',function(){dismissTrigger(rule);});updateTriggerChip();}
+function acceptTrigger(rule){state.triggers[rule.id]='accepted';var card=document.getElementById('trig-'+rule.id);if(card){card.classList.remove('crit-trigger','pending');card.classList.add('accepted');}appendLog({type:'action',body:'&#10003; Action confirmed: <strong>'+rule.title+'</strong>',who:'Team'});updateTriggerChip();}
+function dismissTrigger(rule){state.triggers[rule.id]='dismissed';var card=document.getElementById('trig-'+rule.id);if(card){card.classList.remove('crit-trigger','pending');card.classList.add('dismissed');}appendLog({type:'action',body:'&#10007; Trigger dismissed: <strong>'+rule.title+'</strong>',who:'Team'});updateTriggerChip();}
+function updateTriggerChip(){var p=0;RULES.forEach(function(r){if(state.triggers[r.id]==='pending')p++;});var chip=document.getElementById('trig-count-chip');if(p>0){chip.textContent=p+' action'+(p>1?'s':'')+' needed';chip.classList.remove('hidden');}else{chip.classList.add('hidden');}}
+function flashAlertBar(){var bar=document.getElementById('alert-bar');if(!bar)return;bar.classList.add('crit-flash');setTimeout(function(){bar.classList.remove('crit-flash');},600);}
+
+/* ========= COMMS TEMPLATES ========= */
+function buildTemplates(){var c=document.getElementById('tmpl-container');c.innerHTML='';TEMPLATES.forEach(function(tmpl){var card=document.createElement('div');card.className='tmpl-card';card.id='tmpl-'+tmpl.id;var preview=typeof tmpl.preview==='object'?tmpl.preview[state.scenario]:tmpl.preview;card.innerHTML='<div class="tmpl-tag" style="color:'+tmpl.tagColor+'">'+tmpl.tag+'</div><div class="tmpl-title">'+tmpl.title+'</div><div class="tmpl-preview">'+preview+'</div><button class="tmpl-send-btn" id="send-'+tmpl.id+'">'+(state.tmplSent[tmpl.id]?'&#10003; Sent':'&#128228; Send Now')+'</button>';c.appendChild(card);document.getElementById('send-'+tmpl.id).addEventListener('click',function(){if(!state.tmplSent[tmpl.id])sendTemplate(tmpl);});});}
+function updateTemplateRecommendations(){TEMPLATES.forEach(function(tmpl){var card=document.getElementById('tmpl-'+tmpl.id),btn=document.getElementById('send-'+tmpl.id);if(!card||!btn)return;if(state.tmplSent[tmpl.id]){card.classList.add('sent');card.classList.remove('recommended');return;}var rec=state.simMinute>=tmpl.recommendedFrom&&state.simMinute<=tmpl.recommendedUntil;card.classList.toggle('recommended',rec);btn.classList.toggle('hot',rec);});}
+function sendTemplate(tmpl){state.tmplSent[tmpl.id]=true;var msg=tmpl.fullMsg();prependUpdate({minute:Math.floor(state.simMinute),sev:tmpl.sev,title:tmpl.title,msg:msg});appendLog({type:'comms',body:'&#128228; Comms sent: <strong>'+tmpl.title+'</strong><br><span style="color:var(--muted);font-size:.65rem">&ldquo;'+msg.substring(0,130)+(msg.length>130?'&hellip;':'')+'&rdquo;</span>',who:'Shivali'});var card=document.getElementById('tmpl-'+tmpl.id),btn=document.getElementById('send-'+tmpl.id);if(card){card.classList.add('sent');card.classList.remove('recommended');}if(btn){btn.textContent='Sent';btn.classList.remove('hot');}}
+
+/* ========= DECISION LOG (with Revise) ========= */
+var logIdCounter=0;
+function appendLog(entry){
+  var t=state.simMinute,ts='T+'+pad(Math.floor(t))+':'+pad(Math.floor((t%1)*60));
+  var id='log-'+logIdCounter++;
+  var el=document.createElement('div');
+  el.className='log-entry log-'+entry.type;el.id=id;
+  var whoHtml=entry.who?' &mdash; <span class="log-who">'+entry.who+'</span>':'';
+  el.innerHTML='<div class="log-ts">'+ts+whoHtml+'</div><div class="log-body">'+entry.body+'</div><button class="log-revise-btn" onclick="openRevise(\''+id+'\')">Revise</button>';
+  var log=document.getElementById('decision-log');
+  var ph=document.getElementById('log-placeholder');if(ph)ph.remove();
+  log.insertBefore(el,log.firstChild);
+  state.logEntries.push(entry);
+  document.getElementById('log-count').textContent=state.logEntries.length+' entr'+(state.logEntries.length===1?'y':'ies');
+}
+function openRevise(logId){reviseTargetId=logId;document.getElementById('revise-modal').classList.remove('hidden');document.getElementById('revise-log-text').value='';}
+document.getElementById('btn-revise-cancel').addEventListener('click',function(){document.getElementById('revise-modal').classList.add('hidden');reviseTargetId=null;});
+document.getElementById('btn-revise-submit').addEventListener('click',function(){var txt=document.getElementById('revise-log-text').value.trim();if(!txt)return;var corrEl=document.createElement('div');corrEl.className='log-entry log-correction';corrEl.innerHTML='<div class="log-ts">T+'+pad(Math.floor(state.simMinute))+':'+pad(Math.floor((state.simMinute%1)*60))+' &mdash; <span class="log-who" style="color:var(--teal)">&#9998; CORRECTION</span></div><div class="log-body">'+escHtml(txt)+'</div>';var log=document.getElementById('decision-log');var target=document.getElementById(reviseTargetId);if(target)target.after(corrEl);else log.insertBefore(corrEl,log.firstChild);state.logEntries.push({type:'correction',body:txt,who:'Correction'});document.getElementById('log-count').textContent=state.logEntries.length+' entr'+(state.logEntries.length===1?'y':'ies');document.getElementById('revise-modal').classList.add('hidden');reviseTargetId=null;});
+
+/* ========= RENDER ALL ========= */
+function renderAll(){renderClock();renderMarketChip();renderSignals();renderChart();renderPubChart(state.priceHistory);renderTimeline();renderVerdict();updateTemplateRecommendations();renderWhalePage();}
+function renderClock(){var t=state.simMinute;document.getElementById('clock-display').textContent='T+'+pad(Math.floor(t))+':'+pad(Math.floor((t%1)*60));}
+function pad(n){return n<10?'0'+n:''+n;}
+function renderMarketChip(){var chip=document.getElementById('market-status-chip'),t=state.simMinute,label,cls;if(t<CFG.CRASH_MINUTE){label='NORMAL';cls='chip-green';}else if(t<CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN){label='VOLATILE';cls='chip-red';}else if(t<22){label='REDUCE-ONLY';cls='chip-amber';}else if(t<45){label='RECOVERING';cls='chip-blue';}else{label='NORMAL';cls='chip-green';}chip.textContent=label;chip.className='chip '+cls;}
+
+function renderSignals(){
+  var t=state.simMinute,lr=Math.round(state.liqPerMin),ga=Math.abs(state.markGapPct);
+  var lrEl=document.getElementById('sv-liq-rate');if(lrEl)lrEl.innerHTML=lr+'<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">/min</span>';
+  safeSet('sv-liq-total',state.liqCount.toLocaleString());safeSet('sv-liq-vol','$'+fmtNum(state.liqVol));
+  var lb=Math.min(100,lr/40*100),lc=lr>30?'var(--red)':lr>15?'var(--amber)':'var(--green)';
+  document.getElementById('sb-liq').style.cssText='width:'+lb+'%;background:'+lc;
+  var sL=document.getElementById('sc-liq');sL.classList.toggle('crit',lr>30);sL.classList.toggle('warn',lr>15&&lr<=30);
+  var svL=document.getElementById('sv-liq-rate');if(svL)svL.classList.toggle('crit-val',lr>30);
+  var tr=Math.round(state.ticketsInflowPerMin);
+  var trEl=document.getElementById('sv-tkt-rate');if(trEl)trEl.innerHTML=tr+'<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">/min</span>';
+  safeSet('sv-tkt-open',state.ticketsOpen.toLocaleString());safeSet('sv-tkt-res',state.ticketsResolved.toLocaleString());
+  var tb=Math.min(100,tr/30*100),tc=tr>20?'var(--red)':tr>10?'var(--amber)':'var(--blue)';
+  document.getElementById('sb-tkt').style.cssText='width:'+tb+'%;background:'+tc;
+  var sT=document.getElementById('sc-tkt');sT.classList.toggle('crit',tr>20);sT.classList.toggle('warn',tr>10&&tr<=20);
+  var gapEl=document.getElementById('sv-gap');if(gapEl)gapEl.innerHTML=ga.toFixed(1)+'<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)">%</span>';
+  var gd=state.gapAbove5Since!==null?Math.round((state.simMinute-state.gapAbove5Since)*60)+'s':'0s';
+  safeSet('sv-gap-dur',gd);
+  var gb=Math.min(100,ga/12*100),gc=ga>5?'var(--red)':'var(--green)';
+  document.getElementById('sb-gap').style.cssText='width:'+gb+'%;background:'+gc;
+  var sG=document.getElementById('sc-gap');sG.classList.toggle('crit',ga>8);sG.classList.toggle('warn',ga>5&&ga<=8);
+  if(ga>CFG.GAP_THRESHOLD_PCT){safeSetHTML('gap-pct',ga.toFixed(1));safeSetHTML('gap-pct2',ga.toFixed(1));document.getElementById('gap-banner').classList.remove('hidden');var gb2=document.getElementById('gap-banner2');if(gb2)gb2.classList.remove('hidden');}else{document.getElementById('gap-banner').classList.add('hidden');var gb2=document.getElementById('gap-banner2');if(gb2)gb2.classList.add('hidden');}
+  var mentions=Math.round(state.ticketsInflowPerMin*2.3);safeSet('sv-mentions',mentions);
+  var sent,sentCol;if(t<CFG.CRASH_MINUTE){sent='Neutral';sentCol='var(--muted)';}else if(t<10){sent='&#128545; Panic';sentCol='var(--red)';}else if(t<22){sent='&#128544; Angry';sentCol='var(--amber)';}else if(t<40){sent='&#128528; Cautious';sentCol='var(--muted)';}else{sent='&#128578; Calm';sentCol='var(--green)';}
+  var ssEl=document.getElementById('sv-social');if(ssEl){ssEl.innerHTML=sent;ssEl.style.cssText='-webkit-text-fill-color:'+sentCol+';color:'+sentCol;}
+  var sSo=document.getElementById('sc-social');sSo.classList.toggle('crit',t>=CFG.CRASH_MINUTE&&t<10);sSo.classList.toggle('warn',t>=10&&t<22);
+  var vCard=document.getElementById('sc-vault');if(vCard){vCard.style.opacity=state.playbook.vault?'1':'.4';safeSet('sv-vault-bal','$'+fmtNum(state.vaultBalance));safeSetHTML('sv-vault-sub','Absorbed: $'+fmtNum(state.vaultAbsorbed)+' &middot; Released: $'+fmtNum(state.vaultReleased));}
+  safeSet('arf-issued',state.refundsIssued.toLocaleString());safeSet('arf-total','$'+fmtNum(state.refundedTotal));
+  var pendingWhales=state.abnormalQueue.filter(function(x){return x.status==='pending';});
+  var c1=0,c2=0,c3=0;state.abnormalQueue.forEach(function(x){if(x.status==='pending'){if(x.issue==='Mark/index price mismatch')c1++;else if(x.issue==='Unexpected liquidation price')c2++;else c3++;}});
+  var wcEl=document.getElementById('sv-whale-count');if(wcEl)wcEl.innerHTML=pendingWhales.length+'<span style="font-size:.85rem;color:var(--muted);-webkit-text-fill-color:var(--muted)"> flagged</span>';
+  safeSet('sc-whale-c1',c1);safeSet('sc-whale-c2',c2);safeSet('sc-whale-c3',c3);
+  var btnWhale=document.getElementById('btn-whale-review');if(btnWhale)btnWhale.textContent='Review '+pendingWhales.length+' cases';
+  var sigChip=document.getElementById('sig-status-chip');if(lr>20||ga>5||tr>15){sigChip.textContent='Alerts Active';sigChip.className='chip chip-red';}else if(t>=CFG.CRASH_MINUTE&&t<45){sigChip.textContent='Monitoring';sigChip.className='chip chip-amber';}else{sigChip.textContent='Stable';sigChip.className='chip chip-green';}
+  drawMiniChart('mc-liq',state.liqRateHistory,state.ghostLiqHistory,lc);
+  drawMiniChart('mc-tkt',state.ticketInflowHistory,null,tc);
+  safeSet('stat-liq-count',state.liqCount.toLocaleString());safeSet('stat-liq-vol','$'+fmtNum(state.liqVol));safeSet('stat-insurance','$'+fmtNum(state.insuranceFund));safeSet('stat-open-pos',state.openPos.toLocaleString());
+  var ph=PHASES[state.currentPhase];safeSet('phase-name',ph.name);safeSet('phase-desc',ph.desc);
+  var phChip=document.getElementById('phase-chip');if(phChip){phChip.textContent='Phase '+(state.currentPhase+1);phChip.className='chip '+['chip-green','chip-red','chip-amber','chip-blue','chip-green'][state.currentPhase];}
+}
+function safeSet(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
+function safeSetHTML(id,val){var el=document.getElementById(id);if(el)el.innerHTML=val;}
+
+function drawMiniChart(cid,data,ghost,color){
+  var canvas=document.getElementById(cid);if(!canvas)return;
+  var ctx=canvas.getContext('2d'),W=canvas.clientWidth||200,H=56;canvas.width=W;canvas.height=H;ctx.clearRect(0,0,W,H);
+  if(!data||data.length<2)return;
+  var allVals=ghost?data.concat(ghost):data;
+  var mx=Math.max.apply(null,allVals);if(mx===0)return;
+  if(ghost&&ghost.length>1){ctx.beginPath();ctx.strokeStyle='rgba(255,69,96,.3)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ghost.forEach(function(v,i){var x=(i/(ghost.length-1))*W,y=H-(v/mx)*(H-4)-2;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();ctx.setLineDash([]);}
+  var grad=ctx.createLinearGradient(0,0,W,0);grad.addColorStop(0,color);grad.addColorStop(1,color.replace(')',', .7)').replace('var(--','rgba(').replace(')',',255)'));
+  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=1.8;data.forEach(function(v,i){var x=(i/(data.length-1))*W,y=H-(v/mx)*(H-4)-2;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle='rgba(80,80,200,.06)';ctx.fill();
+}
+
+function renderChart(){
+  var canvas=document.getElementById('market-canvas');if(!canvas)return;
+  var ctx=canvas.getContext('2d'),W=canvas.clientWidth||240,H=180;canvas.width=W;canvas.height=H;ctx.clearRect(0,0,W,H);
+  var pts=state.priceHistory;
+  if(pts.length<2){ctx.fillStyle='#3a4060';ctx.font='11px Inter,system-ui';ctx.fillText('Start simulation to see live price data',10,H/2);return;}
+  // Tight Y-axis: use actual data range + 5% padding — crash fills the chart
+  var allP=[];pts.forEach(function(p){allP.push(p.indexP,p.markP,p.ghostP||p.markP);});
+  var rawMin=Math.min.apply(null,allP),rawMax=Math.max.apply(null,allP),pad=(rawMax-rawMin)*0.08;
+  var minP=rawMin-pad,maxP=rawMax+pad,range=maxP-minP;
+  if(range<200){minP=rawMin-500;maxP=rawMax+500;range=maxP-minP;} // floor so flat pre-crash still has headroom
+  var pL=52,pR=10,pT=10,pB=18,cW=W-pL-pR,cH=H-pT-pB;
+  function xOf(i){return pL+(i/(pts.length-1))*cW;}
+  function yOf(p){return pT+cH-((p-minP)/range)*cH;}
+  // Grid lines
+  ctx.lineWidth=1;
+  for(var g=0;g<=4;g++){
+    var gy=pT+g*(cH/4),gVal=maxP-(g/4)*range;
+    ctx.strokeStyle='rgba(30,37,64,.8)';ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(W-pR,gy);ctx.stroke();
+    ctx.fillStyle='#5a6a9a';ctx.font='9px Inter,system-ui';
+    ctx.fillText('$'+Math.round(gVal/100)*100,2,gy+3);
+  }
+  // Crash zone highlight
+  var cs=-1,ce=-1;
+  pts.forEach(function(p,i){if(cs===-1&&p.t>=CFG.CRASH_MINUTE)cs=i;if(ce===-1&&p.t>=CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN)ce=i;});
+  if(cs>=0&&ce>cs){
+    var grad=ctx.createLinearGradient(xOf(cs),0,xOf(ce),0);
+    grad.addColorStop(0,'rgba(255,69,96,.0)');grad.addColorStop(.5,'rgba(255,69,96,.1)');grad.addColorStop(1,'rgba(255,69,96,.0)');
+    ctx.fillStyle=grad;ctx.fillRect(xOf(cs),pT,xOf(ce)-xOf(cs),cH);
+    ctx.strokeStyle='rgba(255,69,96,.25)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(xOf(cs),pT);ctx.lineTo(xOf(cs),pT+cH);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Ghost mark line (no-action / unmitigated scenario)
+  ctx.beginPath();ctx.strokeStyle='rgba(255,110,180,.45)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  pts.forEach(function(p,i){i===0?ctx.moveTo(xOf(i),yOf(p.ghostP||p.markP)):ctx.lineTo(xOf(i),yOf(p.ghostP||p.markP));});
+  ctx.stroke();ctx.setLineDash([]);
+  // Index (solid blue)
+  ctx.beginPath();ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2.2;
+  pts.forEach(function(p,i){i===0?ctx.moveTo(xOf(i),yOf(p.indexP)):ctx.lineTo(xOf(i),yOf(p.indexP));});
+  ctx.stroke();
+  // Mark (dashed amber — actual with any mitigations applied)
+  ctx.beginPath();ctx.strokeStyle='#f5a623';ctx.lineWidth=1.6;ctx.setLineDash([5,3]);
+  pts.forEach(function(p,i){i===0?ctx.moveTo(xOf(i),yOf(p.markP)):ctx.lineTo(xOf(i),yOf(p.markP));});
+  ctx.stroke();ctx.setLineDash([]);
+  // Live dot + price label
+  var last=pts[pts.length-1],lx=xOf(pts.length-1),ly=yOf(last.indexP);
+  ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
+  ctx.strokeStyle='#07080f';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#e2e8ff';ctx.font='bold 10px Inter,system-ui';
+  ctx.fillText('$'+Math.round(last.indexP).toLocaleString(),Math.min(lx+7,W-70),ly-5);
+  // pub chart is rendered separately in renderAll() to avoid being skipped when ops canvas is hidden
+}
+var _pubCanvasW=0;
+function renderPubChart(pts){
+  var canvas=document.getElementById('pub-canvas');if(!canvas)return;
+  // Try canvas, then walk up to nearest card parent for width when tab is hidden
+  var cw=canvas.clientWidth;
+  if(cw<=0&&canvas.parentElement)cw=canvas.parentElement.clientWidth-32;
+  if(cw<=0&&canvas.parentElement&&canvas.parentElement.parentElement)cw=canvas.parentElement.parentElement.clientWidth-40;
+  if(cw>0)_pubCanvasW=cw;
+  var W=_pubCanvasW||820,H=180;
+  if(W<=0)return; // nothing to draw
+  canvas.width=W;canvas.height=H;
+  var ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,H);
+  if(!pts||pts.length<2){
+    ctx.fillStyle='#3a4060';ctx.font='11px Inter,system-ui';
+    ctx.fillText('Start simulation to see live price data',10,H/2);return;
+  }
+  // Use tight Y-range with 8% padding so crash fills the chart (matches ops chart logic)
+  var allP=[];pts.forEach(function(p){allP.push(p.indexP,p.markP);});
+  var rawMin=Math.min.apply(null,allP),rawMax=Math.max.apply(null,allP),pad2=(rawMax-rawMin)*0.08;
+  var minP=rawMin-pad2,maxP=rawMax+pad2,range=maxP-minP;
+  if(range<200){minP=rawMin-500;maxP=rawMax+500;range=maxP-minP;}
+  var pL=52,pR=8,pT=10,pB=22,cW=W-pL-pR,cH=H-pT-pB;
+  function xOf(i){return pL+(i/(pts.length-1))*cW;}
+  function yOf(p){return pT+cH-((p-minP)/range)*cH;}
+  // Grid lines + Y labels
+  ctx.lineWidth=1;
+  for(var g=0;g<=4;g++){
+    var gy=pT+g*(cH/4),gVal=maxP-(g/4)*range;
+    ctx.strokeStyle='rgba(30,37,64,.8)';ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(W-pR,gy);ctx.stroke();
+    ctx.fillStyle='#5a6a9a';ctx.font='9px Inter,system-ui';
+    ctx.fillText('$'+Math.round(gVal/100)*100,2,gy+3);
+  }
+  // X-axis time labels (sample ~5 labels)
+  if(pts.length>1){
+    var tStep=Math.max(1,Math.floor(pts.length/5));
+    ctx.fillStyle='#5a6a9a';ctx.font='8px Inter,system-ui';ctx.textAlign='center';
+    for(var ti=0;ti<pts.length;ti+=tStep){
+      var tx=xOf(ti),tt=pts[ti].t;
+      ctx.fillText('T+'+(tt<10?'0':'')+Math.floor(tt),tx,H-4);
+    }
+    ctx.textAlign='left';
+  }
+  // Crash zone highlight
+  var cs=-1,ce=-1;
+  pts.forEach(function(p,i){if(cs===-1&&p.t>=CFG.CRASH_MINUTE)cs=i;if(ce===-1&&p.t>=CFG.CRASH_MINUTE+CFG.CRASH_DURATION_MIN)ce=i;});
+  if(cs>=0&&ce>cs){
+    var grad=ctx.createLinearGradient(xOf(cs),0,xOf(ce),0);
+    grad.addColorStop(0,'rgba(255,69,96,.0)');grad.addColorStop(.5,'rgba(255,69,96,.12)');grad.addColorStop(1,'rgba(255,69,96,.0)');
+    ctx.fillStyle=grad;ctx.fillRect(xOf(cs),pT,xOf(ce)-xOf(cs),cH);
+    ctx.strokeStyle='rgba(255,69,96,.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(xOf(cs),pT);ctx.lineTo(xOf(cs),pT+cH);ctx.stroke();
+    ctx.setLineDash([]);
+    // Crash label
+    ctx.fillStyle='rgba(255,69,96,.7)';ctx.font='bold 8px Inter,system-ui';
+    ctx.fillText('CRASH',xOf(cs)+3,pT+10);
+  }
+  // Index line (solid blue)
+  ctx.beginPath();ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2;
+  pts.forEach(function(p,i){i===0?ctx.moveTo(xOf(i),yOf(p.indexP)):ctx.lineTo(xOf(i),yOf(p.indexP));});
+  ctx.stroke();
+  // Mark line (dashed amber)
+  ctx.beginPath();ctx.strokeStyle='#f5a623';ctx.lineWidth=1.6;ctx.setLineDash([4,3]);
+  pts.forEach(function(p,i){i===0?ctx.moveTo(xOf(i),yOf(p.markP)):ctx.lineTo(xOf(i),yOf(p.markP));});
+  ctx.stroke();ctx.setLineDash([]);
+  // Live dot
+  var last=pts[pts.length-1],lx=xOf(pts.length-1),ly=yOf(last.indexP);
+  ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
+  ctx.strokeStyle='#07080f';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#e2e8ff';ctx.font='bold 10px Inter,system-ui';
+  ctx.fillText('$'+Math.round(last.indexP).toLocaleString(),Math.min(lx+7,W-70),ly-5);
+}
+
+function renderTimeline(){var c=document.getElementById('timeline-container');if(!c)return;var t=state.simMinute;c.innerHTML=PHASES.map(function(ph){var isDone=t>=ph.endMin,isActive=t>=ph.startMin&&t<ph.endMin,cls=isDone?'done-phase':isActive?'active-phase':'';var sc3=isDone?'<span class="chip chip-green" style="font-size:.6rem">Done</span>':isActive?'<span class="chip chip-cyan" style="font-size:.6rem">Active</span>':'';var acts=ph.actions.map(function(a){var done=t>=a.doneAt;return '<li class="'+(done?'done':'')+'"><span class="owner">'+a.owner+'</span>'+(done?'[x] ':'[ ] ')+a.text+'</li>';}).join('');return '<div class="phase '+cls+'"><div class="row" style="gap:7px"><div class="phase-title">'+ph.name+'</div><div class="phase-time">'+ph.time+'</div>'+sc3+'</div><div style="font-size:.75rem;color:var(--muted);margin-top:3px">'+ph.desc+'</div><ul class="phase-actions">'+acts+'</ul></div>';}).join('');}
+
+function renderVerdict(){var t=state.simMinute,ip=getIndexPrice(t);var mv=((ip-CFG.BASE_PRICE)/CFG.BASE_PRICE*100).toFixed(1);safeSet('vd-market-move',mv+'%');var ga=Math.abs(state.markGapPct),gEl=document.getElementById('vd-gap');if(gEl){gEl.textContent=ga.toFixed(1)+'%';gEl.style.color=ga>CFG.GAP_THRESHOLD_PCT?'var(--red)':'var(--green)';}var vEl=document.getElementById('vd-verdict');if(vEl){if(t<CFG.VERDICT_MINUTE){vEl.textContent='Investigating...';vEl.className='chip chip-amber';}else{vEl.textContent=sc().verdict;vEl.className=state.scenario==='market'?'chip chip-green':'chip chip-red';}}}
+
+function prependUpdate(u){var feed=document.getElementById('updates-feed');if(!feed)return;var ph=feed.querySelector('div[style*="text-align:center"]');if(ph)ph.remove();var col={red:'var(--red)',amber:'var(--amber)',green:'var(--green)'}[u.sev];var item=document.createElement('div');item.className='update-item';item.innerHTML='<div class="update-ts" style="color:'+col+'">T+'+pad(Math.floor(u.minute))+':00</div><div style="font-weight:700;margin-top:3px;color:'+col+'">'+u.title+'</div><div class="update-msg">'+u.msg+'</div>';feed.insertBefore(item,feed.firstChild);}
+function setAlertBar(type,msg){document.getElementById('alert-bar').className='alert-bar alert-'+type;document.getElementById('alert-text').textContent=msg;}
+
+/* ========= REPORT FORM ========= */
+document.getElementById('report-form').addEventListener('submit',function(e){e.preventDefault();if(!validateForm())return;state.caseCounter++;var caseId='MT-'+state.caseCounter,lp=parseFloat(document.getElementById('r-liq-price').value),loss=parseFloat(document.getElementById('r-loss').value),pg=sc().peakGapPct;var cLow=CFG.BASE_PRICE*(1-CFG.CRASH_DROP_PCT),mLow=cLow*(1-pg/100),lb=mLow*.98,ub=cLow*1.02;var inBand=lp>=lb&&lp<=ub,eligible=(state.scenario==='fault')&&inBand;var comp=0,note='';if(eligible){comp=Math.min(loss*(pg-CFG.GAP_THRESHOLD_PCT)/pg,CFG.COMP_CAP);note='Eligible';}else if(state.scenario==='market'){note='Market-wide move confirmed. Mark stayed within threshold.';}else{note='Liquidation price outside the affected mark-price band.';}var ek=document.getElementById('r-email').value.trim().toLowerCase();var cd={id:caseId,name:document.getElementById('r-name').value.trim(),email:ek,side:document.getElementById('r-side').value,leverage:document.getElementById('r-leverage').value,entry:parseFloat(document.getElementById('r-entry').value),liqPrice:lp,liqTime:document.getElementById('r-liq-time').value,loss:loss,eligible:eligible,compAmount:comp,compNote:note,peakGap:pg,scenario:state.scenario,pipeline:3};state.cases[caseId]=cd;state.cases[ek]=cd;if(eligible&&comp>0){state.compensationPaid+=comp;state.insuranceFund-=comp;if(state.insuranceFund<0)state.insuranceFund=0;}appendLog({type:'case',body:'&#128203; Case <strong>'+caseId+'</strong> filed &mdash; '+(eligible?'<span style="color:var(--green)">Compensation est. $'+comp.toFixed(0)+'</span>':'Liquidation stands')+' &mdash; '+cd.name,who:null});document.getElementById('report-form').classList.add('hidden');document.getElementById('report-success').classList.remove('hidden');document.getElementById('case-id-display').textContent=caseId;renderAll();});
+document.getElementById('btn-new-report').addEventListener('click',function(){document.getElementById('report-form').classList.remove('hidden');document.getElementById('report-success').classList.add('hidden');document.getElementById('report-form').reset();document.querySelectorAll('.err-msg').forEach(function(el){el.textContent='';});document.querySelectorAll('input.err,select.err,textarea.err').forEach(function(el){el.classList.remove('err');});});
+function validateForm(){var fields=[{id:'r-name',errId:'err-name',msg:'Name required.'},{id:'r-email',errId:'err-email',msg:'Valid email required.',check:function(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}},{id:'r-side',errId:'err-side',msg:'Select position side.'},{id:'r-leverage',errId:'err-leverage',msg:'Select leverage.'},{id:'r-entry',errId:'err-entry',msg:'Enter entry price.',check:function(v){return parseFloat(v)>0;}},{id:'r-liq-price',errId:'err-liq-price',msg:'Enter liquidation price.',check:function(v){return parseFloat(v)>0;}},{id:'r-liq-time',errId:'err-liq-time',msg:'Enter liquidation time.'},{id:'r-loss',errId:'err-loss',msg:'Enter estimated loss.',check:function(v){return parseFloat(v)>0;}},{id:'r-desc',errId:'err-desc',msg:'Describe what happened.'}];var valid=true;fields.forEach(function(f){var el=document.getElementById(f.id),err=document.getElementById(f.errId),val=el.value.trim(),ok=val.length>0&&(f.check?f.check(val):true);el.classList.toggle('err',!ok);err.textContent=ok?'':f.msg;if(!ok)valid=false;});return valid;}
+
+/* ========= TRACK CASE ========= */
+document.getElementById('btn-track').addEventListener('click',trackCase);
+document.getElementById('track-input').addEventListener('keydown',function(e){if(e.key==='Enter')trackCase();});
+function trackCase(){var raw=document.getElementById('track-input').value.trim(),res=document.getElementById('case-result');var c=state.cases[raw.toUpperCase()]||state.cases[raw.toLowerCase()];if(!c){res.innerHTML='<div style="color:var(--muted);margin-top:12px;font-size:.82rem">No case found for <strong>'+escHtml(raw)+'</strong>.</div>';return;}var stages=['Received','Verified Against Index','Decision Made','Resolved'];var ph2=stages.map(function(s,i){var cl=i<c.pipeline?'done':i===c.pipeline?'active':'';return '<div class="pipe-step '+cl+'">'+s+'</div>';}).join('');var dh;if(c.eligible){var cg=c.peakGap||sc().peakGapPct,r2=c.loss*(cg-CFG.GAP_THRESHOLD_PCT)/cg;dh='<div class="comp-box"><div style="font-weight:700;color:var(--green);margin-bottom:8px">Eligible for Compensation</div><div class="comp-row"><span>Estimated loss</span><span>$'+c.loss.toLocaleString()+'</span></div><div class="comp-row"><span>Gap at liquidation</span><span>'+cg.toFixed(1)+'%</span></div><div class="comp-row"><span>Formula</span><span>Loss &times; '+(cg-CFG.GAP_THRESHOLD_PCT).toFixed(1)+' / '+cg.toFixed(1)+'</span></div><div class="comp-row"><span>Raw compensation</span><span>$'+r2.toFixed(0)+'</span></div><div class="comp-row"><span><strong>Final (capped $15K)</strong></span><span><strong style="color:var(--green)">$'+c.compAmount.toFixed(2)+'</strong></span></div></div>';}else{dh='<div class="comp-box deny"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">Liquidation Stands &mdash; No Compensation</div><div style="font-size:.78rem;color:var(--muted)">'+escHtml(c.compNote)+'</div></div>';}res.innerHTML='<hr style="border:none;border-top:1px solid var(--border);margin:14px 0"><div class="row" style="margin-bottom:7px"><div style="font-size:1rem;font-weight:700;font-family:var(--mono)">'+c.id+'</div><div style="color:var(--muted);font-size:.78rem">Filed by '+escHtml(c.name)+'</div></div><div class="pipeline">'+ph2+'</div>'+dh;}
+
+/* ========= FAQ ========= */
+function buildFAQ(){var cont=document.getElementById('faq-container');if(!cont)return;cont.innerHTML=FAQ.map(function(item,i){var ans=typeof item.a==='object'?item.a[state.scenario]:item.a;return '<div class="faq-item"><button class="faq-q" id="faq-q-'+i+'" aria-expanded="false">'+item.q+'</button><div class="faq-a" id="faq-a-'+i+'">'+ans+'</div></div>';}).join('');FAQ.forEach(function(_,i){document.getElementById('faq-q-'+i).addEventListener('click',function(){toggleFAQ(i);});});}
+function toggleFAQ(i){var q=document.getElementById('faq-q-'+i),a=document.getElementById('faq-a-'+i),open=a.classList.contains('visible');a.classList.toggle('visible',!open);q.classList.toggle('open',!open);q.setAttribute('aria-expanded',String(!open));}
+
+/* ========= MANUAL LOG MODAL ========= */
+var selectedWho='Elisha';
+document.getElementById('btn-manual-log').addEventListener('click',function(){document.getElementById('manual-modal').classList.remove('hidden');});
+document.getElementById('btn-manual-cancel').addEventListener('click',function(){document.getElementById('manual-modal').classList.add('hidden');});
+document.querySelectorAll('.team-pill').forEach(function(pill){pill.addEventListener('click',function(){document.querySelectorAll('.team-pill').forEach(function(p){p.classList.remove('selected');});pill.classList.add('selected');selectedWho=pill.dataset.who;});});
+document.getElementById('btn-manual-submit').addEventListener('click',function(){var txt=document.getElementById('manual-log-text').value.trim();if(!txt)return;appendLog({type:'decision',body:escHtml(txt),who:selectedWho});document.getElementById('manual-log-text').value='';document.getElementById('manual-modal').classList.add('hidden');});
+
+/* ========= HELPERS ========= */
+function fmtNum(n){if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.round(n).toString();}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ========= ABNORMAL LIQUIDATION INTERCEPTOR ========= */
+function renderWhalePage(){
+  var wrap=document.getElementById('whale-table-wrap');if(!wrap)return;
+  var pendingCount=0;state.abnormalQueue.forEach(function(x){if(x.status==='pending')pendingCount++;});
+  var ch=document.getElementById('whale-chip');if(ch)ch.textContent=pendingCount+' pending';
+  if(state.abnormalQueue.length===0){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:.82rem;text-align:center;padding:30px 0">No abnormal liquidations flagged yet. They will appear here during volatile periods.</div>';return;
+  }
+  var rows=state.abnormalQueue.slice().reverse().map(function(item){
+    var diff=item.actual-item.expected,diffStr=(diff>=0?'+$':'-$')+Math.abs(diff).toLocaleString();
+    var diffCol=diff<0?'var(--red)':'var(--green)';
+    var stCls={pending:'chip-amber',frozen:'chip-blue',forced:'chip-green'}[item.status];
+    var acts=item.status==='pending'?'<button class="btn btn-ghost btn-sm" onclick="forceLiquidate(\''+item.id+'\')" style="margin-right:6px">Force Liquidate</button><button class="btn btn-sm" style="background:var(--blue);color:#fff" onclick="freezeForReview(\''+item.id+'\')">Freeze for Review</button>':'<span style="color:var(--muted);font-size:.7rem">&mdash;</span>';
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:8px 6px;font-family:var(--mono);font-weight:700">'+item.account+' <span style="font-size:.65rem;color:var(--muted);font-weight:400">($'+fmtNum(item.notional)+')</span></td>'+
+      '<td style="padding:8px 6px">'+item.issue+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">$'+item.expected.toLocaleString()+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">$'+item.actual.toLocaleString()+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono);color:'+diffCol+'">'+diffStr+'</td>'+
+      '<td style="padding:8px 6px"><span class="chip '+stCls+'">'+item.status+'</span></td>'+
+      '<td style="padding:8px 6px;text-align:right">'+acts+'</td>'+
+    '</tr>';
+  }).join('');
+  wrap.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em"><th style="padding:8px 6px">Account</th><th style="padding:8px 6px">Issue (cause)</th><th style="padding:8px 6px">Expected</th><th style="padding:8px 6px">Actual</th><th style="padding:8px 6px">Value Difference</th><th style="padding:8px 6px">Status</th><th style="padding:8px 6px;text-align:right">Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function forceLiquidate(id){
+  var entry=null;for(var i=0;i<state.abnormalQueue.length;i++){if(state.abnormalQueue[i].id===id){entry=state.abnormalQueue[i];break;}}
+  if(!entry||entry.status!=='pending')return;
+  entry.status='forced';
+  appendLog({type:'action',body:'&#9889; Force-liquidated <strong>'+id+'</strong> &mdash; Team',who:'Team'});
+  renderWhalePage();renderSignals();
+}
+function freezeForReview(id){
+  var entry=null;for(var i=0;i<state.abnormalQueue.length;i++){if(state.abnormalQueue[i].id===id){entry=state.abnormalQueue[i];break;}}
+  if(!entry||entry.status!=='pending')return;
+  entry.status='frozen';
+  appendLog({type:'decision',body:'&#129482; Frozen for review: <strong>'+id+'</strong> &mdash; '+entry.issue+' ('+entry.diffPct.toFixed(1)+'% deviation, $'+fmtNum(entry.notional)+') &mdash; awaiting manual verification',who:'Team'});
+  renderWhalePage();renderSignals();
+}
+
+/* ========= INIT ========= */
+buildFAQ();buildTemplates();renderAll();
+</script>
+</body>
+</html>
